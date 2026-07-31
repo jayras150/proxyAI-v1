@@ -1,0 +1,474 @@
+{
+  "communities": {
+    "0": [
+      "blueprint_proxyai_blueprint_sprint1",
+      "blueprint_proxyai_blueprint_sprint10",
+      "blueprint_proxyai_blueprint_sprint11",
+      "blueprint_proxyai_blueprint_sprint12",
+      "blueprint_proxyai_blueprint_sprint13",
+      "blueprint_proxyai_blueprint_sprint16",
+      "blueprint_proxyai_blueprint_sprint2",
+      "blueprint_proxyai_blueprint_sprint3",
+      "blueprint_proxyai_blueprint_sprint4",
+      "blueprint_proxyai_blueprint_sprint5",
+      "blueprint_proxyai_blueprint_sprint6",
+      "blueprint_proxyai_blueprint_sprint7",
+      "blueprint_proxyai_blueprint_sprint8",
+      "blueprint_proxyai_blueprint_sprint9",
+      "concept_admin_dashboard",
+      "concept_ai_configuration",
+      "concept_api_gateway",
+      "concept_api_keys",
+      "concept_approval_session",
+      "concept_audit_logs",
+      "concept_authentication",
+      "concept_billing_engine",
+      "concept_cloudflare",
+      "concept_deepinfra",
+      "concept_deepseek_models",
+      "concept_design_system",
+      "concept_engineering_standards",
+      "concept_error_specification",
+      "concept_idempotency",
+      "concept_jwt",
+      "concept_monitoring",
+      "concept_nextjs",
+      "concept_openai_compatible_api",
+      "concept_openapi_spec",
+      "concept_postgresql",
+      "concept_pricing_engine",
+      "concept_prisma",
+      "concept_provider_adapter",
+      "concept_proxyai",
+      "concept_rate_limiting",
+      "concept_rbac",
+      "concept_retry_strategy",
+      "concept_security_controls",
+      "concept_slo",
+      "concept_streaming_sse",
+      "concept_stride_threat_model",
+      "concept_supabase",
+      "concept_tailwind",
+      "concept_totp",
+      "concept_transactions",
+      "concept_usage_logs",
+      "concept_user_dashboard",
+      "concept_vercel",
+      "concept_wallet_system",
+      "concept_zod",
+      "project_status",
+      "proxyai_blueprint_v1_consolidated_draft",
+      "todo_project",
+      "typescript"
+    ],
+    "1": [
+      "src_app_api_auth_login_route",
+      "src_app_api_auth_login_route_post",
+      "src_app_api_auth_refresh_route",
+      "src_app_api_auth_register_route",
+      "src_app_api_auth_register_route_post",
+      "src_config_env",
+      "src_config_env_env",
+      "src_config_env_envoptional",
+      "src_config_env_envrequired",
+      "src_lib_crypto_generatesecuretoken",
+      "src_lib_jwt",
+      "src_lib_jwt_generateaccesstoken",
+      "src_lib_jwt_generaterefreshtoken",
+      "src_lib_jwt_generatetokens",
+      "src_lib_jwt_ms",
+      "src_lib_jwt_verifyrefreshtoken",
+      "src_lib_password",
+      "src_lib_password_hashpassword",
+      "src_lib_password_verifypassword",
+      "src_lib_prisma",
+      "src_lib_prisma_globalforprisma",
+      "src_lib_prisma_prisma",
+      "src_lib_validation",
+      "src_lib_validation_createapikeyinput",
+      "src_lib_validation_createapikeyschema",
+      "src_lib_validation_logininput",
+      "src_lib_validation_loginschema",
+      "src_lib_validation_refreshinput",
+      "src_lib_validation_refreshschema",
+      "src_lib_validation_registerinput",
+      "src_lib_validation_registerschema",
+      "src_server_auth_login",
+      "src_server_auth_login_loginresult",
+      "src_server_auth_login_loginuser",
+      "src_server_auth_refresh",
+      "src_server_auth_refresh_refreshresult",
+      "src_server_auth_refresh_refreshtokens",
+      "src_server_auth_register",
+      "src_server_auth_register_autherror",
+      "src_server_auth_register_autherror_constructor",
+      "src_server_auth_register_registerresult",
+      "src_server_auth_register_registeruser",
+      "src_types_auth",
+      "src_types_auth_authtokens",
+      "src_types_auth_userprofile"
+    ],
+    "2": [
+      "src_app_api_api_keys_id_route",
+      "src_app_api_api_keys_id_route_delete",
+      "src_app_api_api_keys_route",
+      "src_app_api_api_keys_route_autherror",
+      "src_app_api_api_keys_route_autherror_constructor",
+      "src_app_api_api_keys_route_get",
+      "src_app_api_api_keys_route_getuseridfromrequest",
+      "src_app_api_api_keys_route_post",
+      "src_app_api_auth_logout_route",
+      "src_app_api_auth_logout_route_post",
+      "src_app_api_auth_refresh_route_post",
+      "src_lib_crypto",
+      "src_lib_crypto_generateapikey",
+      "src_lib_crypto_hashapikey",
+      "src_lib_jwt_verifyaccesstoken",
+      "src_middleware_auth",
+      "src_middleware_auth_authenticatedrequest",
+      "src_middleware_auth_authenticaterequest",
+      "src_middleware_auth_requirerole",
+      "src_server_api_keys_create",
+      "src_server_api_keys_create_createapikey",
+      "src_server_api_keys_create_createdapikey",
+      "src_server_api_keys_list",
+      "src_server_api_keys_list_apikeyitem",
+      "src_server_api_keys_list_listapikeys",
+      "src_server_api_keys_revoke",
+      "src_server_api_keys_revoke_revokeapikey",
+      "src_server_auth_logout",
+      "src_server_auth_logout_logoutallsessions",
+      "src_server_auth_logout_logoutsession",
+      "src_server_auth_logout_logoutuser",
+      "src_types_api",
+      "src_types_api_apierror",
+      "src_types_api_apiresponse",
+      "src_types_api_apisuccess",
+      "src_types_api_errorresponse",
+      "src_types_api_successresponse",
+      "src_types_auth_jwtpayload"
+    ],
+    "3": [
+      "ref_dom",
+      "ref_dom_iterable",
+      "ref_esnext",
+      "ref_mts",
+      "ref_next_dev_types_ts",
+      "ref_next_env_d_ts",
+      "ref_next_types_ts",
+      "ref_node_modules",
+      "ref_ts",
+      "ref_tsx",
+      "tsconfig",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_esmoduleinterop",
+      "tsconfig_compileroptions_incremental",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_plugins",
+      "tsconfig_compileroptions_resolvejsonmodule",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_strict",
+      "tsconfig_compileroptions_target",
+      "tsconfig_exclude",
+      "tsconfig_include"
+    ],
+    "4": [
+      "bcryptjs",
+      "jsonwebtoken",
+      "next",
+      "package",
+      "package_dependencies",
+      "package_dependencies_bcryptjs",
+      "package_dependencies_jsonwebtoken",
+      "package_dependencies_next",
+      "package_dependencies_prisma",
+      "package_dependencies_prisma_client",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_lint",
+      "package_scripts_start",
+      "package_version",
+      "prisma",
+      "prisma_client",
+      "react",
+      "react_dom"
+    ],
+    "5": [
+      "src_app_dashboard_layout",
+      "src_app_dashboard_layout_dashboardlayout",
+      "src_app_dashboard_page",
+      "src_app_dashboard_page_dashboardpage",
+      "src_app_layout",
+      "src_app_layout_geistmono",
+      "src_app_layout_geistsans",
+      "src_app_layout_metadata",
+      "src_app_layout_rootlayout",
+      "src_app_login_page",
+      "src_app_login_page_loginpage",
+      "src_app_register_page",
+      "src_app_register_page_registerpage",
+      "src_components_api_keys_section",
+      "src_components_api_keys_section_apikeyitem",
+      "src_components_api_keys_section_apikeysection",
+      "src_lib_auth_context",
+      "src_lib_auth_context_authcontext",
+      "src_lib_auth_context_authcontexttype",
+      "src_lib_auth_context_authprovider",
+      "src_lib_auth_context_authstate",
+      "src_lib_auth_context_useauth"
+    ],
+    "6": [
+      "eslint",
+      "eslint_config_next",
+      "package_devdependencies",
+      "package_devdependencies_eslint",
+      "package_devdependencies_eslint_config_next",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_tailwindcss_postcss",
+      "package_devdependencies_types_bcryptjs",
+      "package_devdependencies_types_jsonwebtoken",
+      "package_devdependencies_types_node",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_typescript",
+      "tailwindcss",
+      "tailwindcss_postcss",
+      "types_bcryptjs",
+      "types_jsonwebtoken",
+      "types_node",
+      "types_react",
+      "types_react_dom"
+    ],
+    "7": [
+      "blueprint_proxyai_blueprint_sprint14",
+      "blueprint_proxyai_blueprint_sprint15",
+      "concept_adr",
+      "concept_reliability",
+      "concept_scalability_roadmap",
+      "concept_structured_logging",
+      "concept_testing_strategy"
+    ],
+    "8": [
+      "readme",
+      "readme_learn_nextjs",
+      "readme_nextjs_docs",
+      "readme_nextjs_github",
+      "readme_vercel_fonts"
+    ],
+    "9": [
+      "agents",
+      "claude",
+      "concept_next_dist_docs"
+    ],
+    "10": [
+      "eslint_config",
+      "eslint_config_eslintconfig"
+    ],
+    "11": [
+      "next_config",
+      "next_config_nextconfig"
+    ],
+    "12": [
+      "postcss_config",
+      "postcss_config_config"
+    ],
+    "13": [
+      "src_app_page",
+      "src_app_page_homepage"
+    ],
+    "14": [
+      "public_file"
+    ],
+    "15": [
+      "public_globe"
+    ],
+    "16": [
+      "public_next"
+    ],
+    "17": [
+      "public_vercel"
+    ],
+    "18": [
+      "public_window"
+    ]
+  },
+  "cohesion": {
+    "0": 0.1163062536528346,
+    "1": 0.10505050505050505,
+    "2": 0.10384068278805121,
+    "3": 0.06896551724137931,
+    "4": 0.08333333333333333,
+    "5": 0.16017316017316016,
+    "6": 0.1,
+    "7": 0.2857142857142857,
+    "8": 0.4,
+    "9": 0.6666666666666666,
+    "10": 1.0,
+    "11": 1.0,
+    "12": 1.0,
+    "13": 1.0,
+    "14": 1.0,
+    "15": 1.0,
+    "16": 1.0,
+    "17": 1.0,
+    "18": 1.0
+  },
+  "gods": [
+    {
+      "id": "proxyai_blueprint_v1_consolidated_draft",
+      "label": "ProxyAI Blueprint v1 (Consolidated Draft)",
+      "degree": 29
+    },
+    {
+      "id": "blueprint_proxyai_blueprint_sprint2",
+      "label": "ProxyAI Blueprint Sprint 2 — Architecture & Data Layer",
+      "degree": 19
+    },
+    {
+      "id": "tsconfig_compileroptions",
+      "label": "compilerOptions",
+      "degree": 16
+    },
+    {
+      "id": "blueprint_proxyai_blueprint_sprint10",
+      "label": "ProxyAI Blueprint Sprint 10 — Architecture Diagrams & State Machines",
+      "degree": 16
+    },
+    {
+      "id": "blueprint_proxyai_blueprint_sprint3",
+      "label": "ProxyAI Blueprint Sprint 3 — API Gateway & Provider Layer",
+      "degree": 15
+    },
+    {
+      "id": "concept_authentication",
+      "label": "Authentication Service",
+      "degree": 15
+    },
+    {
+      "id": "src_types_api_successresponse",
+      "label": "successResponse()",
+      "degree": 14
+    },
+    {
+      "id": "src_types_api_errorresponse",
+      "label": "errorResponse()",
+      "degree": 14
+    },
+    {
+      "id": "concept_wallet_system",
+      "label": "Wallet System",
+      "degree": 14
+    },
+    {
+      "id": "concept_api_gateway",
+      "label": "API Gateway",
+      "degree": 13
+    }
+  ],
+  "surprises": [
+    {
+      "source": "ProxyAI Blueprint Sprint 12 — UI Design System & Frontend Architecture",
+      "target": "typescript",
+      "source_files": [
+        "Blueprint/ProxyAI_Blueprint_Sprint12.md",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (code ↔ doc); connects across different repos/directories"
+    },
+    {
+      "source": "ProxyAI Blueprint Sprint 2 — Architecture & Data Layer",
+      "target": "typescript",
+      "source_files": [
+        "Blueprint/ProxyAI_Blueprint_Sprint2.md",
+        "package.json"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "crosses file types (code ↔ doc); connects across different repos/directories"
+    },
+    {
+      "source": "ProxyAI Blueprint Sprint 16 — Consolidation, Governance & Final Readiness",
+      "target": "ProxyAI Blueprint v1 (Consolidated Draft)",
+      "source_files": [
+        "Blueprint/ProxyAI_Blueprint_Sprint16.md",
+        "ProxyAI_Blueprint_v1_Consolidated_Draft.md"
+      ],
+      "confidence": "INFERRED",
+      "relation": "references",
+      "why": "inferred connection - not explicitly stated in source; connects across different repos/directories"
+    },
+    {
+      "source": "ProxyAI Blueprint v1 (Consolidated Draft)",
+      "target": "ProxyAI Blueprint Sprint 14 — Architecture Decisions, Quality & Scalability",
+      "source_files": [
+        "ProxyAI_Blueprint_v1_Consolidated_Draft.md",
+        "Blueprint/ProxyAI_Blueprint_Sprint14.md"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities"
+    },
+    {
+      "source": "ProxyAI Blueprint v1 (Consolidated Draft)",
+      "target": "ProxyAI Blueprint Sprint 15 — Testing, Reliability, FinOps & Compliance",
+      "source_files": [
+        "ProxyAI_Blueprint_v1_Consolidated_Draft.md",
+        "Blueprint/ProxyAI_Blueprint_Sprint15.md"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "ambiguous_edge",
+      "question": "What is the exact relationship between `PROJECT_STATUS.md` and `ProxyAI Blueprint v1 (Consolidated Draft)`?",
+      "why": "Edge tagged AMBIGUOUS (relation: references) - confidence is low."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `devDependencies` connect `Development Tooling` to `Runtime Dependencies`?",
+      "why": "High betweenness centrality (0.107) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `typescript` connect `ProxyAI Blueprint Architecture` to `Development Tooling`?",
+      "why": "High betweenness centrality (0.093) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `typescript` connect `Development Tooling` to `ProxyAI Blueprint Architecture`?",
+      "why": "High betweenness centrality (0.092) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `eslintConfig`, `nextConfig`, `name` to the rest of the system?",
+      "why": "76 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `ProxyAI Blueprint Architecture` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.1163062536528346 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Authentication Token Service` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.10505050505050505 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

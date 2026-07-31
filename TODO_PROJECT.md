@@ -1,116 +1,138 @@
-# ProxyAI Project Status
+# ProxyAI Project Tasks
 
-Last Updated: 2026-07-30
-
-## Overall Progress
-
-Project Status: 🚧 In Development
-
-Completion: 15%
-
-Current Phase:
-- Foundation
+Last Updated: 2026-07-31
 
 ---
 
-# Current Objectives
+## ✅ Completed Tasks
 
-1. Build Authentication
-2. Build Wallet System
-3. Build Billing Engine
-4. OpenAI Compatible API
-5. User Dashboard
-6. Admin Dashboard
+### Authentication Module — Phase 1 (2026-07-31)
 
----
+- [x] Initialize Next.js 15 project (TypeScript, App Router, Tailwind CSS v4)
+- [x] Install dependencies (Prisma, bcryptjs, jsonwebtoken, zod)
+- [x] Create Prisma schema (all core models)
+- [x] Set up Prisma Client
+- [x] Create config/env module
+- [x] Create type definitions (auth, api)
+- [x] Create Prisma singleton
+- [x] Create password hashing utilities (bcrypt, 12 rounds)
+- [x] Create JWT utilities (generate, verify, refresh — no `any`)
+- [x] Create crypto utilities (API key generation, SHA-256 hashing)
+- [x] Create Zod validation schemas
+- [x] Create auth server services (register, login, refresh, logout)
+- [x] Create API key server services (create, list, revoke)
+- [x] Create auth middleware
+- [x] Create HttpOnly cookie helpers
+- [x] Create client-side AuthContext provider (cookie-based)
+- [x] Create API routes:
+  - POST /api/auth/register
+  - POST /api/auth/login
+  - POST /api/auth/refresh
+  - POST /api/auth/logout
+  - POST /api/auth/logout-all
+  - GET /api/auth/me
+  - GET /api/api-keys
+  - POST /api/api-keys
+  - DELETE /api/api-keys/:id
+- [x] Create Login page (/login)
+- [x] Create Register page (/register)
+- [x] Create Dashboard shell with auth guard
+- [x] Create API Key management component
+- [x] Verify TypeScript compilation
+- [x] Verify lint passes (0 errors, 0 warnings)
+- [x] Verify production build passes
 
-# Completed
+### Authentication Security Hardening (2026-07-31 — self review fixes)
 
-## Documentation
-
-- [x] PRD
-- [x] Architecture Blueprint
-- [x] API Blueprint
-- [x] Security Blueprint
-- [x] Deployment Blueprint
-
-## Infrastructure
-
-- [x] GitHub Repository
-- [x] Vercel Connected
-- [x] Supabase Created
-- [x] DeepInfra Account
-
----
-
-# In Progress
-
-Authentication
-
-Status:
-🟡 Planning
-
-Wallet
-
-Status:
-🔴 Not Started
-
-Billing
-
-Status:
-🔴 Not Started
-
-Dashboard
-
-Status:
-🔴 Not Started
+- [x] P1: Tokens moved from localStorage to HttpOnly Secure cookies
+- [x] P1: Refresh tokens hashed (SHA-256) at rest, never plaintext
+- [x] P2: Logout revokes only current session; logout-all endpoint added
+- [x] P2: Removed all `as any`
+- [x] P2: Fixed all lint/TypeScript errors
+- [x] P2: npm run lint + npm run build pass with no errors
 
 ---
 
-# Next Task
+## 🟡 In Progress
 
-Implement Authentication Module
+### Authentication Module — Remaining Blueprint Compliance
 
-Expected Deliverables
+Status: Core complete, blueprint gaps remain — NOT marked fully complete
 
-- Login
-- Register
-- JWT
-- Refresh Token
-- API Key
-- Session Management
+- [ ] request_id wired into standard response contract (Blueprint §59)
+- [ ] Rate limiting for auth endpoints (Blueprint §67)
+- [ ] Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy (Blueprint §38)
+- [ ] Admin TOTP + approval sessions (Blueprint §36-37) — admin phase
 
 ---
 
-# Decisions
+## 📋 Upcoming Tasks
 
-AI Provider
+### Wallet System
 
-- DeepInfra
+Status: 🔴 Not Started
 
-Supported Models
+Tasks:
+- [ ] Wallet CRUD server service
+- [ ] Top-up endpoint
+- [ ] Balance validation
+- [ ] Transaction creation
+- [ ] Wallet API routes
+- [ ] Wallet UI (balance display, top-up)
+- [ ] Transaction history UI
 
-- DeepSeek V4 Flash
-- DeepSeek V4 Pro
+### Billing Engine
 
-Architecture
+Status: 🔴 Not Started
 
-- OpenAI Compatible API
-- Wallet First Billing
+Tasks:
+- [ ] Pricing engine server service
+- [ ] Usage accounting
+- [ ] Wallet deduction after AI request
+- [ ] Idempotency support
+- [ ] Refund strategy
 
----
+### OpenAI Compatible API
 
-# Known Issues
+Status: 🔴 Not Started
 
-None
+Tasks:
+- [ ] Provider adapter interface
+- [ ] DeepInfra provider implementation
+- [ ] GET /v1/models endpoint
+- [ ] POST /v1/chat/completions (non-streaming)
+- [ ] POST /v1/chat/completions (streaming/SSE)
+- [ ] Request lifecycle (validate key → validate wallet → provider → bill)
+- [ ] Error handling & retry strategy
 
----
+### User Dashboard
 
-# Notes For AI Agent
+Status: 🔴 Not Started
 
-Before coding:
+Tasks:
+- [ ] Home page with widgets
+- [ ] Usage charts
+- [ ] Transaction history
+- [ ] Settings page
 
-1. Read AGENTS.md
-2. Read docs/Blueprint
-3. Follow existing architecture.
-4. Never modify architecture without approval.
+### Admin Dashboard
+
+Status: 🔴 Not Started
+
+Tasks:
+- [ ] Admin login with TOTP
+- [ ] User management
+- [ ] Wallet management
+- [ ] AI configuration
+- [ ] Audit logs
+
+### Security & Operations
+
+Status: 🔴 Not Started
+
+Tasks:
+- [ ] RBAC enforcement
+- [ ] Rate limiting
+- [ ] Security headers (CSP, HSTS)
+- [ ] TOTP for admin
+- [ ] Approval sessions for dangerous actions

@@ -1,0 +1,207 @@
+// ProxyAI — Prisma Schema v1
+// Blueprint Reference: Sprint 8 — Database Design
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ApiKeyStatus {
+  ACTIVE
+  DISABLED
+  REVOKED
+}
+
+enum TransactionType {
+  TOPUP
+  AI_USAGE
+  REFUND
+  ADJUSTMENT
+  ADMIN_CREDIT
+  ADMIN_DEBIT
+}
+
+// ─── Core Models ────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String
+  name         String?
+  role         Role       @default(USER)
+  status       UserStatus @default(ACTIVE)
+
+  wallet     Wallet?
+  apiKeys    ApiKey[]
+  sessions   Session[]
+  usageLogs  UsageLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Session {
+  id               String   @id @default(uuid())
+  userId           String
+  refreshTokenHash String   @unique
+  userAgent        String?
+  ipAddress        String?
+  expiresAt        DateTime
+  createdAt        DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([refreshTokenHash])
+  @@map("sessions")
+}
+
+model ApiKey {
+  id        String       @id @default(uuid())
+  userId    String
+  name      String
+  keyPrefix String
+  keyHash   String       @unique
+  lastUsedAt DateTime?
+  status    ApiKeyStatus @default(ACTIVE)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+model Wallet {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  balance   Decimal @db.Decimal(18, 6) @default(0)
+  currency  String  @default("USD")
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("wallets")
+}
+
+model Transaction {
+  id            String          @id @default(uuid())
+  walletId      String
+  amount        Decimal         @db.Decimal(18, 6)
+  balanceBefore Decimal         @db.Decimal(18, 6)
+  balanceAfter  Decimal         @db.Decimal(18, 6)
+  currency      String          @default("USD")
+  type          TransactionType
+  reference     String          @unique
+  description   String?
+  status        String          @default("COMPLETED")
+
+  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([walletId])
+  @@index([reference])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model UsageLog {
+  id              String   @id @default(uuid())
+  userId          String
+  apiKeyId        String?
+  provider        String
+  model           String
+  promptTokens    Int
+  completionTokens Int
+  totalTokens     Int
+  providerCost    Decimal  @db.Decimal(18, 10)
+  userCost        Decimal  @db.Decimal(18, 6)
+  latencyMs       Int?
+  status          String
+  requestId       String?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiModel AiModel? @relation(fields: [modelId], references: [id])
+
+  modelId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+  @@map("usage_logs")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  adminId    String
+  action     String
+  resource   String
+  beforeValue Json?
+  afterValue  Json?
+  ipAddress  String?
+  userAgent  String?
+  status     String
+
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([adminId])
+  @@map("audit_logs")
+}
+
+model AiModel {
+  id            String   @id @default(uuid())
+  displayName   String
+  provider      String
+  modelId       String   @unique
+  contextWindow Int
+  inputPrice    Decimal  @db.Decimal(10, 6)
+  outputPrice   Decimal  @db.Decimal(10, 6)
+  enabled       Boolean  @default(true)
+  capabilities  Json?
+
+  usageLogs UsageLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_models")
+}
+
+model AiConfiguration {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+
+  @@map("ai_configurations")
+}
