@@ -119,10 +119,27 @@ export class Money {
     return this.amount.greaterThan(other.amount) ? this : other
   }
 
+  /** Negate the value (used for the negative-balance floor). */
+  negate(): Money {
+    return new Money(this.amount.negated(), this.currency)
+  }
+
   /** -1 | 0 | 1 */
   compareTo(other: Money): -1 | 0 | 1 {
     this.assertSameCurrency(other)
     return this.amount.comparedTo(other.amount) as -1 | 0 | 1
+  }
+
+  /** True when this < other (same currency). */
+  lessThan(other: Money): boolean {
+    this.assertSameCurrency(other)
+    return this.amount.lessThan(other.amount)
+  }
+
+  /** True when this <= other (same currency). */
+  lessThanOrEqual(other: Money): boolean {
+    this.assertSameCurrency(other)
+    return this.amount.lessThanOrEqualTo(other.amount)
   }
 
   /**

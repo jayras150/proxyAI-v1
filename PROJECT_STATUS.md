@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `c810091` — feat(billing): add database foundation and domain model
+Commit: `852c015` — feat(billing): add pure pricing engine with documented formulas
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 50%
+Completion: 53%
 
 Current Phase:
-- Billing Engine — Milestone 2 (Pricing Engine)
+- Billing Engine — Milestone 3 (Estimate Service)
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅ — M3 berikutnya)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅ — M4 berikutnya)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -447,6 +447,43 @@ Design terkunci — tidak akan diubah sebelum implementasi dimulai.
 
 > ✅ Milestone 1 COMPLETED — lihat TODO_PROJECT untuk detail.
 
+## Billing Engine — Milestone 3: Estimate Service (2026-07-31)
+
+### EstimateService (read-only)
+
+- [x] src/server/billing/estimate.service.ts — estimate(): load PricingVersion aktif → build PricingSnapshot → PricingEngine.calculate() → read wallet balance → floor policy
+- [x] TIDAK pernah: debit, transaction, usage log, provider call, event — read-only (verified)
+- [x] Menggunakan PricingEngine (bukan pricing engine sendiri)
+
+### Business Rule (ADR-0001)
+
+- [x] estimatedBalance = balance - estimatedCost
+- [x] canProceed = estimatedBalance >= -WALLET_MAX_NEGATIVE_BALANCE (env, default 0.10)
+- [x] Wallet status gate: PAYMENT_REQUIRED / LOCKED / SUSPENDED → tolak (reason eksplisit)
+- [x] Custom floor override per-call (maxNegativeBalance)
+
+### Error Domain
+
+- [x] PRICING_NOT_FOUND (throw) / WALLET_NOT_FOUND (throw) / CURRENCY_MISMATCH (throw) / INSUFFICIENT_BALANCE (canProceed=false + reason) / ESTIMATE_FAILED (fallback)
+
+### Schema
+
+- [x] PricingVersion + currency column (migration M1 di-update — belum di-apply live)
+- [x] env WALLET_MAX_NEGATIVE_BALANCE
+
+### Test Coverage (14 test baru)
+
+- [x] pricing ditemukan / tidak ditemukan / ACTIVE window selection / snapshot benar
+- [x] wallet ditemukan / tidak ditemukan / saldo cukup / negatif dalam floor / melewati floor / custom floor
+- [x] PAYMENT_REQUIRED / LOCKED / SUSPENDED / CURRENCY_MISMATCH
+- [x] deterministic / service fee override
+
+### Verification
+
+- [x] npm test: 133 passed / tsc ✅ / lint ✅ 0/0 / build ✅
+- [x] Tidak ada operasi Money manual (semua via Money VO)
+- [x] Tidak ada write DB / transaction / event
+
 ## Billing Engine — Milestone 2: Pricing Engine (2026-07-31)
 
 ### PricingEngine (pure domain service)
@@ -568,7 +605,7 @@ Status:
 Billing
 
 Status:
-🟡 Milestone 2 COMPLETED (Pricing Engine) — M3 Usage Metering berikutnya
+🟡 Milestone 3 COMPLETED (Estimate Service) — M4 ChargeService berikutnya
 
 Dashboard
 
@@ -579,9 +616,9 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 3 (Usage Metering & ChargeService)** — implementasi berikutnya.
+**Billing Engine — Milestone 4 (Usage Metering & ChargeService)** — implementasi berikutnya.
 
-Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance. M1 (schema/migration/VO/repository interfaces) dan M2 (PricingEngine pure) selesai 2026-07-31.
+Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance. M1 (schema/migration/VO/repository interfaces), M2 (PricingEngine pure), M3 (EstimateService read-only) selesai 2026-07-31.
 
 Expected Deliverables (saat implementasi nanti)
 

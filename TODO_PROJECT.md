@@ -213,7 +213,18 @@ Status: ✅ **COMPLETED** (2026-07-31) — 119 tests, lint, build passed
 - [x] Boundary conversion di lib/prisma.ts (moneyToPrisma / prismaToDecimal / prismaToMoney)
 - [x] Unit tests: 15 pricing + 11 M1 domain = total 119
 
-### Implementasi — Milestone 3: Usage Metering & ChargeService
+### Implementasi — Milestone 3: Estimate Service
+
+Status: ✅ **COMPLETED** (2026-07-31) — 133 tests, lint, build passed
+
+- [x] EstimateService (read-only): pricing aktif → snapshot → PricingEngine.calculate() → wallet balance → floor policy
+- [x] Business rule ADR-0001: estimatedBalance = balance - cost; canProceed >= -WALLET_MAX_NEGATIVE_BALANCE
+- [x] Wallet status gate (PAYMENT_REQUIRED/LOCKED/SUSPENDED) + custom floor override
+- [x] Error domain: PRICING_NOT_FOUND, WALLET_NOT_FOUND, CURRENCY_MISMATCH, INSUFFICIENT_BALANCE, ESTIMATE_FAILED
+- [x] PricingVersion.currency column + env WALLET_MAX_NEGATIVE_BALANCE
+- [x] Unit + integration tests: 14 baru (total 133)
+
+### Implementasi — Milestone 4: Usage Metering & ChargeService
 
 Status: 🔴 Not Started — menunggu instruksi
 
@@ -221,10 +232,10 @@ Tasks (saat implementasi nanti):
 - [ ] Usage metering service (UsageMeter pure + UsageLogRepository impl)
 - [ ] ChargeService (1 DB tx: debit wallet + transaction AI_USAGE + usage log + idempotency billing:usage)
 - [ ] RefundService + RefundRequestRepository impl
-- [ ] M4: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
-- [ ] M5: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
-- [ ] M6: Refund flow + reconciliation
-- [ ] M7: Production Readiness Review + closure
+- [ ] M5: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
+- [ ] M6: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
+- [ ] M7: Refund flow + reconciliation
+- [ ] M8: Production Readiness Review + closure
 - [ ] Wallet changes (ADR-0001): DROP CHECK constraint, WalletStatus.PAYMENT_REQUIRED, debitWithFloor, reaktivasi credit
 
 ---

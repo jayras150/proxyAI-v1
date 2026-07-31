@@ -33,6 +33,9 @@ export const env = {
   webhookSignatureHeader: envOptional('WEBHOOK_SIGNATURE_HEADER', 'x-mock-signature'),
   topupExpiryMinutes: Number(envOptional('TOPUP_EXPIRY_MINUTES', '30')),
 
+  // Billing (ADR-0001: business policy, not DB constraint)
+  walletMaxNegativeBalance: envOptional('WALLET_MAX_NEGATIVE_BALANCE', '0.10'),
+
   // App
   appUrl: envOptional('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
   apiUrl: envOptional('NEXT_PUBLIC_API_URL', 'http://localhost:3000/api'),

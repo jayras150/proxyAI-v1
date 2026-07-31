@@ -2,7 +2,7 @@
 // Billing Design Review v2 — Revision 5 (Pricing Versioning)
 // Milestone 1: interface only. Implementation arrives with services.
 
-import type { PricingVersion, Prisma } from '@prisma/client'
+import type { PricingVersion, Prisma, Currency } from '@prisma/client'
 
 export interface PricingVersionCreateInput {
   modelId: string
@@ -11,6 +11,7 @@ export interface PricingVersionCreateInput {
   outputPrice: Prisma.Decimal // per 1M tokens
   markupPercent: Prisma.Decimal
   serviceFee: Prisma.Decimal
+  currency: Currency
   effectiveFrom: Date
   effectiveTo?: Date | null
 }
