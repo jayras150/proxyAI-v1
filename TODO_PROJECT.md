@@ -2,7 +2,7 @@
 
 Last Updated: 2026-07-31
 
-Latest commit: `d2020b8` — docs: update project status after final verification
+Latest commit: `e85dcbd` — feat(auth): add rate limiting, request_id and security headers
 
 ---
 
@@ -79,9 +79,26 @@ Latest commit: `d2020b8` — docs: update project status after final verificatio
 
 ## ✅ Completed Tasks
 
+### Architecture Review Cleanup — R1-R4 (2026-07-31)
+
+- [x] R1 — Hapus dead code middleware/auth.ts; satu pola auth (getAuthenticatedUser di src/lib/auth-request.ts)
+- [x] R2 — Extract toUserProfile + userProfileSelect ke src/lib/user-profile.ts
+- [x] R3 — Extract createSession ke src/server/auth/session.ts
+- [x] R4 — Satu sumber refresh token lifetime (env.refreshExpiresInDays); constants.ts dihapus
+- [x] Perilaku API tidak berubah (verified: 401 + request_id + rate-limit headers; 65 req → 60 + 5× 429)
+- [x] npm run lint ✅ / npm run build ✅
+
+### Technical Debt (R5-R9) — dicatat, dikerjakan nanti
+
+- [ ] R5 — ms() → lib/time.ts
+- [ ] R6 — RedisRateLimiter retryAfterSeconds via ttl
+- [ ] R7 — unused type exports validation.ts
+- [ ] R8 — isJwtError() helper
+- [ ] R9 — prisma CLI → devDependencies
+
 ### Authentication Module — Fully Blueprint Compliant
 
-Status: ✅ COMPLETE (request_id, rate limiting, security headers implemented & verified)
+Status: ✅ COMPLETE
 
 ---
 
@@ -89,7 +106,7 @@ Status: ✅ COMPLETE (request_id, rate limiting, security headers implemented & 
 
 ### Wallet System
 
-Status: 🔴 Not Started — NEXT TASK after auth module is marked complete
+Status: 🔴 Not Started — NEXT TASK
 
 Tasks:
 - [ ] Wallet CRUD server service

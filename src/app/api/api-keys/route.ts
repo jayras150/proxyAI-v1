@@ -4,9 +4,8 @@
 // POST /api/api-keys    — Create API key
 
 import { NextRequest } from 'next/server'
-import { verifyAccessToken } from '@/lib/jwt'
+import { getAuthenticatedUser } from '@/lib/auth-request'
 import { AuthError } from '@/lib/errors'
-import { getAccessToken } from '@/lib/cookies'
 import { listApiKeys } from '@/server/api-keys/list'
 import { createApiKey } from '@/server/api-keys/create'
 import { createApiKeySchema } from '@/lib/validation'
@@ -14,24 +13,14 @@ import { jsonSuccess, jsonError } from '@/lib/api-response'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit/helpers'
 import { RATE_LIMITS } from '@/config/rate-limits'
 
-function getUserIdFromRequest(request: NextRequest): string {
-  const token = getAccessToken(request)
-  if (!token) {
-    throw new AuthError('UNAUTHORIZED', 'Missing or invalid authorization header.')
-  }
-
-  const payload = verifyAccessToken(token)
-  return payload.sub
-}
-
 export async function GET(request: NextRequest) {
   // Rate limit: authenticated endpoint, 300 req/min.
   const rate = await enforceRateLimit(request, RATE_LIMITS.apiKeys)
   if (rate.limited) return rate.response
 
   try {
-    const userId = getUserIdFromRequest(request)
-    const keys = await listApiKeys(userId)
+    const payload = getAuthenticatedUser(request)
+    const keys = await listApiKeys(payload.sub)
 
     return jsonSuccess(keys, { headers: rateLimitHeaders(rate.result) })
   } catch (error) {
@@ -58,7 +47,7 @@ export async function POST(request: NextRequest) {
   if (rate.limited) return rate.response
 
   try {
-    const userId = getUserIdFromRequest(request)
+    const payload = getAuthenticatedUser(request)
     const body = await request.json()
 
     const parsed = createApiKeySchema.safeParse(body)
@@ -70,7 +59,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const key = await createApiKey(userId, parsed.data.name)
+    const key = await createApiKey(payload.sub, parsed.data.name)
 
     return jsonSuccess(key, { status: 201, headers: rateLimitHeaders(rate.result) })
   } catch (error) {

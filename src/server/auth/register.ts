@@ -4,11 +4,11 @@
 import { prisma } from '@/lib/prisma'
 import { hashPassword } from '@/lib/password'
 import { generateTokens } from '@/lib/jwt'
-import { hashToken } from '@/lib/crypto'
 import { AuthError } from '@/lib/errors'
+import { toUserProfile, userProfileSelect } from '@/lib/user-profile'
+import { createSession } from './session'
 import type { RegisterInput } from '@/lib/validation'
 import type { AuthTokens, UserProfile } from '@/types/auth'
-import { REFRESH_TOKEN_LIFETIME_MS } from './constants'
 
 export interface RegisterResult {
   user: UserProfile
@@ -28,7 +28,7 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
   const passwordHash = await hashPassword(password)
 
   const user = await prisma.$transaction(async (tx) => {
-    const newUser = await tx.user.create({
+    return tx.user.create({
       data: {
         email,
         passwordHash,
@@ -40,17 +40,8 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
           },
         },
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        status: true,
-        createdAt: true,
-      },
+      select: userProfileSelect,
     })
-
-    return newUser
   })
 
   // Generate tokens
@@ -61,25 +52,10 @@ export async function registerUser(input: RegisterInput): Promise<RegisterResult
   })
 
   // Store only the SHA-256 hash of the refresh token
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_LIFETIME_MS)
-
-  await prisma.session.create({
-    data: {
-      userId: user.id,
-      refreshTokenHash: hashToken(tokens.refreshToken),
-      expiresAt,
-    },
-  })
+  await createSession(user.id, tokens.refreshToken)
 
   return {
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-      createdAt: user.createdAt.toISOString(),
-    },
+    user: toUserProfile(user),
     tokens,
   }
 }

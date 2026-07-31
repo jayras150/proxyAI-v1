@@ -3,9 +3,10 @@
 
 import { NextRequest } from 'next/server'
 import { logoutAllSessions } from '@/server/auth/logout'
-import { verifyAccessToken } from '@/lib/jwt'
+import { getAuthenticatedUser } from '@/lib/auth-request'
+import { AuthError } from '@/lib/errors'
 import { jsonSuccess, jsonError } from '@/lib/api-response'
-import { getAccessToken, clearAuthCookies } from '@/lib/cookies'
+import { clearAuthCookies } from '@/lib/cookies'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit/helpers'
 import { RATE_LIMITS } from '@/config/rate-limits'
 
@@ -15,15 +16,7 @@ export async function POST(request: NextRequest) {
   if (rate.limited) return rate.response
 
   try {
-    const accessToken = getAccessToken(request)
-    if (!accessToken) {
-      return jsonError('UNAUTHORIZED', 'Missing or invalid authorization header.', {
-        status: 401,
-        headers: rateLimitHeaders(rate.result),
-      })
-    }
-
-    const payload = verifyAccessToken(accessToken)
+    const payload = getAuthenticatedUser(request)
 
     await logoutAllSessions(payload.sub)
 
@@ -36,8 +29,17 @@ export async function POST(request: NextRequest) {
 
     return response
   } catch (error) {
+    if (error instanceof AuthError) {
+      return jsonError(error.code, error.message, {
+        status: 401,
+        headers: rateLimitHeaders(rate.result),
+      })
+    }
     if (error instanceof Error && error.name === 'JsonWebTokenError') {
-      return jsonError('INVALID_TOKEN', 'Access token is invalid or expired.', { status: 401 })
+      return jsonError('INVALID_TOKEN', 'Access token is invalid or expired.', {
+        status: 401,
+        headers: rateLimitHeaders(rate.result),
+      })
     }
 
     console.error('Logout-all error:', error)

@@ -2,22 +2,22 @@
 
 Last Updated: 2026-07-31
 
-Commit: `d2020b8` — docs: update project status after final verification
+Commit: `e85dcbd` — feat(auth): add rate limiting, request_id and security headers
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 25%
+Completion: 27%
 
 Current Phase:
-- Authentication — Blueprint Compliance (rate limit, request_id, security headers)
+- Authentication — Architecture Review cleanup (R1-R4)
 
 ---
 
 # Current Objectives
 
-1. ✅ Build Authentication (blueprint compliant)
+1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. 🔄 Build Wallet System
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
@@ -135,6 +135,23 @@ Current Phase:
 - [x] npm run lint: ✅ 0 errors, 0 warnings
 - [x] npm run build: ✅ success (14 routes)
 - [x] Smoke test rate limiter + api-response ✅
+
+## Architecture Review Cleanup — R1-R4 (2026-07-31)
+
+- [x] R1 — Dead code removed: src/middleware/auth.ts dihapus; satu pola auth helper: src/lib/auth-request.ts (getAuthenticatedUser) dipakai semua protected route
+- [x] R2 — Mapping User→UserProfile di-extract: src/lib/user-profile.ts (toUserProfile + userProfileSelect), dipakai register/login/refresh/me
+- [x] R3 — Create session di-extract: src/server/auth/session.ts (createSession, sessionExpiresAt, refreshTokenLifetimeMs), dipakai register/login/refresh
+- [x] R4 — Satu sumber refresh token lifetime: constants.ts dihapus; semua membaca env.refreshExpiresInDays (cookie & session konsisten)
+- [x] Tidak ada perubahan perilaku API (verified live: 401 + request_id + rate-limit headers sama; 65 req → 60 diproses + 5× 429)
+- [x] npm run lint: ✅ 0 errors / npm run build: ✅ success
+
+### Technical Debt (R5-R9, deferred)
+
+- [ ] R5 — Pindah ms() ke lib/time.ts (jwt.ts & cookies.ts pakai bersama)
+- [ ] R6 — RedisRateLimiter retryAfterSeconds akurat via redis.ttl()
+- [ ] R7 — Hapus unused type exports di validation.ts
+- [ ] R8 — Extract isJwtError() helper
+- [ ] R9 — Pindah prisma CLI ke devDependencies
 
 ---
 

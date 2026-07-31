@@ -2,8 +2,8 @@
 // Blueprint Reference: Sprint 9 — API Key APIs
 
 import { NextRequest } from 'next/server'
-import { verifyAccessToken } from '@/lib/jwt'
-import { getAccessToken } from '@/lib/cookies'
+import { getAuthenticatedUser } from '@/lib/auth-request'
+import { AuthError } from '@/lib/errors'
 import { revokeApiKey } from '@/server/api-keys/revoke'
 import { jsonSuccess, jsonError } from '@/lib/api-response'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit/helpers'
@@ -18,15 +18,7 @@ export async function DELETE(
   if (rate.limited) return rate.response
 
   try {
-    const token = getAccessToken(request)
-    if (!token) {
-      return jsonError('UNAUTHORIZED', 'Missing or invalid authorization header.', {
-        status: 401,
-        headers: rateLimitHeaders(rate.result),
-      })
-    }
-
-    const payload = verifyAccessToken(token)
+    const payload = getAuthenticatedUser(request)
     const { id } = await params
 
     await revokeApiKey(id, payload.sub)
@@ -36,6 +28,12 @@ export async function DELETE(
       { headers: rateLimitHeaders(rate.result) }
     )
   } catch (error) {
+    if (error instanceof AuthError) {
+      return jsonError(error.code, error.message, {
+        status: 401,
+        headers: rateLimitHeaders(rate.result),
+      })
+    }
     if (error instanceof Error && error.message === 'API key not found') {
       return jsonError('NOT_FOUND', 'API key not found.', {
         status: 404,

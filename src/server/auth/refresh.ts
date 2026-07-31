@@ -5,8 +5,9 @@ import { prisma } from '@/lib/prisma'
 import { verifyRefreshToken, generateTokens } from '@/lib/jwt'
 import { hashToken } from '@/lib/crypto'
 import { AuthError } from '@/lib/errors'
+import { toUserProfile, userProfileSelect } from '@/lib/user-profile'
+import { sessionExpiresAt } from './session'
 import type { AuthTokens, UserProfile } from '@/types/auth'
-import { REFRESH_TOKEN_LIFETIME_MS } from './constants'
 
 export interface RefreshResult {
   user: UserProfile
@@ -26,14 +27,7 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
     where: { refreshTokenHash: hashToken(refreshToken) },
     include: {
       user: {
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          status: true,
-          createdAt: true,
-        },
+        select: userProfileSelect,
       },
     },
   })
@@ -60,28 +54,19 @@ export async function refreshTokens(refreshToken: string): Promise<RefreshResult
     role: session.user.role,
   })
 
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_LIFETIME_MS)
-
   await prisma.$transaction([
     prisma.session.delete({ where: { id: session.id } }),
     prisma.session.create({
       data: {
         userId: session.user.id,
         refreshTokenHash: hashToken(newTokens.refreshToken),
-        expiresAt,
+        expiresAt: sessionExpiresAt(),
       },
     }),
   ])
 
   return {
-    user: {
-      id: session.user.id,
-      email: session.user.email,
-      name: session.user.name,
-      role: session.user.role,
-      status: session.user.status,
-      createdAt: session.user.createdAt.toISOString(),
-    },
+    user: toUserProfile(session.user),
     tokens: newTokens,
   }
 }
