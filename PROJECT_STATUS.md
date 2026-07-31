@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `1909c4b` — feat(billing): add refund service with atomic credit-back
+Commit: `a01e650` — feat(billing): add AI gateway billing orchestrator
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 56%
+Completion: 57%
 
 Current Phase:
-- Billing Engine — Milestone 6 (Refund Service) ✅ COMPLETED
+- Billing Engine — Milestone 7 (AI Gateway / Billing Orchestrator) ✅ COMPLETED
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅ — M7 berikutnya, belum dimulai)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅, M7 ✅ — M8 berikutnya, belum dimulai)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -774,6 +774,77 @@ total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
 
 > ✅ Milestone 6 COMPLETED.
 
+## Billing Engine — Milestone 7: AI Gateway / Billing Orchestrator (2026-07-31)
+
+### AIGateway (application service — orchestrator ONLY)
+
+- [x] src/server/gateway/ai-gateway.ts — orchestrate: validate → RequestContext → EstimateService → AIProvider → ProviderResponse → UsageMeter → ChargeService → BillingSummary → GatewayResponse
+- [x] Zero pricing / wallet / token / persistence logic (grep-verified: tidak ada fetch/Prisma/repository/PricingEngine.calculate)
+- [x] Tidak ada shortcut: estimate gate SEBELUM provider dipanggil; tidak ada charge tanpa provider response yang valid
+
+### RequestContext Review
+
+- [x] src/server/gateway/request-context.ts — requestId, correlationId, userId, startedAt, clientIp/userAgent/metadata opsional; validasi non-empty; toLogContext() (semua log line membawa correlation_id); elapsedMs()
+- [x] Diteruskan: provider tracing header (x-request-metadata), charge requestId, estimate userId (tested)
+
+### Provider Review
+
+- [x] AIProvider interface (provider-types.ts): name/version/capabilities/health/chat/estimateContext — gateway tidak tahu endpoint/auth/API key/URL
+- [x] DeepSeekProvider (src/server/providers/deepseek-provider.ts) — OpenAI-compatible /chat/completions, body tetap kompatibel, tracing via header
+- [x] ProviderTransport (post/get) + FetchProviderTransport — base URL + Bearer key hanya di provider layer; abort (timeout) tidak pernah di-wrap (PROVIDER_TIMEOUT vs PROVIDER_ERROR)
+- [x] Provider lain bisa ditambah tanpa mengubah gateway (interface-only)
+
+### ProviderCapabilities Review
+
+- [x] streaming/vision/reasoning/toolCalling/jsonMode/embeddings/imageGeneration + opsional maxContextTokens/maxOutputTokens/supportedModels/supportedFormats
+- [x] DeepSeek: streaming ✅ vision ❌ reasoning ✅ toolCalling ❌ jsonMode ✅ embeddings ❌ imageGeneration ❌, 64K context, deepseek-chat/reasoner (tested)
+
+### ProviderResponse Review
+
+- [x] provider/model/providerRequestId/content/finishReason/usage(TokenUsage)/rawUsage/raw — raw hanya debugging/audit, tidak pernah di-parse oleh gateway
+- [x] Mapping: id → providerRequestId, choices[0].message.content, finish_reason → normalized enum; usage di-meter via UsageMeter; malformed structure → MalformedProviderResponseError (tested)
+
+### BillingSummary Review
+
+- [x] transactionId/usageLogId/pricingVersionId/totalCost/currency/walletBalanceBefore/walletBalanceAfter/walletStatusAfter — semua uang Money VO + currency guard (tested)
+- [x] ChargeResult +walletBalanceBefore (additive, M5)
+
+### GatewayResponse Review
+
+- [x] response/provider/usage/billing/latency(total+provider+billing ms)/requestId/correlationId (tested)
+
+### Error Review (didokumentasikan di header file)
+
+- [x] 1. Estimate gagal → provider TIDAK dipanggil, tidak charge (tested: ESTIMATE_REJECTED & ESTIMATE_FAILED → 0 provider call)
+- [x] 2. Provider timeout → tidak charge (PROVIDER_TIMEOUT, tested via AbortSignal 20ms)
+- [x] 3. Provider error → tidak charge (PROVIDER_ERROR, tested)
+- [x] 4. Malformed ProviderResponse → tidak charge (MALFORMED_PROVIDER_RESPONSE, tested)
+- [x] 5. UsageMeter gagal → tidak charge (USAGE_PARSE_FAILED, tested)
+- [x] 6. Charge gagal → provider SUDAH melayani request; CHARGE_FAILED dengan providerRequestId + charge_code + remediation (tested)
+- [x] Retry policy: gateway TIDAK PERNAH retry AI generation; charge idempotent (gateway_<requestId>) — retry gateway = provider dipanggil lagi tapi billing settle sekali (tested: 2 run → 2 provider call, 1 charge)
+
+### Logging Review
+
+- [x] Structured log (logger existing) dengan correlation_id + request_id: gateway.started, request_validated, estimate.started/finished, provider.started/finished, usage.parsed, charge.started/finished, gateway.finished/failed + latency (provider/billing/total)
+
+### Test Coverage (22 test baru)
+
+- [x] normal flow ✓ (response + usage + billing exact money 0.000077/9.999923) / provider success + billing success ✓
+- [x] estimate reject (PAYMENT_REQUIRED) & estimate fail (no pricing) → provider tidak dipanggil ✓
+- [x] provider timeout ✓ / provider error ✓ / malformed ProviderResponse ✓ / malformed usage ✓ → tidak charge
+- [x] charge gagal → actionable CHARGE_FAILED, provider sudah dipanggil ✓
+- [x] billing summary benar ✓ / ProviderCapabilities benar ✓ / ProviderResponse mapping benar ✓
+- [x] RequestContext diteruskan (header + charge + log) ✓ / deterministic ✓
+- [x] no duplicate charge (2 run same requestId → 1 settlement) ✓ / no duplicate provider call per invocation ✓ / validation ✓ / health GET (tidak bayar health check) ✓
+
+### Verification
+
+- [x] npm test: 237 passed (22 baru) / tsc ✅ / lint ✅ 0:0 / build ✅
+- [x] EstimateService digunakan ✓ AIProvider interface ✓ ProviderCapabilities ✓ ProviderResponse ✓ UsageMeter ✓ ChargeService ✓ BillingSummary ✓ RequestContext ✓
+- [x] Tidak ada HTTP logic di gateway / pricing / wallet / persistence (grep-verified)
+
+> ✅ Milestone 7 COMPLETED.
+
 ---
 
 # In Progress
@@ -791,7 +862,7 @@ Status:
 Billing
 
 Status:
-🟢 Milestone 6 COMPLETED (Refund Service) — M7 berikutnya, belum dimulai
+🟢 Milestone 7 COMPLETED (AI Gateway / Billing Orchestrator) — M8 berikutnya, belum dimulai
 
 Dashboard
 
@@ -802,7 +873,7 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 7** — menunggu instruksi (jangan mulai sebelum approval).
+**Billing Engine — Milestone 8** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 

@@ -26,6 +26,8 @@ export const env = {
 
   // DeepInfra
   deepinfraApiKey: envOptional('DEEPINFRA_API_KEY', ''),
+  deepinfraBaseUrl: envOptional('DEEPINFRA_BASE_URL', 'https://api.deepinfra.com/v1'),
+  aiProviderTimeoutMs: Number(envOptional('AI_PROVIDER_TIMEOUT_MS', '60000')),
 
   // Payments
   paymentProvider: envOptional('PAYMENT_PROVIDER', 'mock'),

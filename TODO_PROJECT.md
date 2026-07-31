@@ -260,13 +260,26 @@ Status: 🟢 COMPLETED
 - [x] Unit + integration tests: 19 baru (total 215) — normal, duplicate, replay, rollback, optimistic locking, wallet credit, REFUNDED, events, race, IN_PROGRESS, deterministic
 - [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / prisma validate ✅ / no HTTP / no partial update
 
-### Implementasi — Milestone 7: Provider Gateway (belum dimulai)
+### Implementasi — Milestone 7: AI Gateway / Billing Orchestrator (COMPLETED 2026-07-31)
+
+Status: 🟢 COMPLETED
+
+- [x] AIGateway (src/server/gateway/ai-gateway.ts) — orchestrator only: estimate gate → provider → meter → charge → billing summary; zero pricing/wallet/token/persistence logic
+- [x] RequestContext (request-context.ts) + AIProvider interface + ProviderCapabilities + ProviderResponse + BillingSummary + GatewayResponse (gateway/*)
+- [x] DeepSeekProvider + FetchProviderTransport (src/server/providers/) — HTTP/key/URL hanya di provider layer
+- [x] Error policy terdokumentasi (6 scenario, tested) + retry policy (tidak pernah retry generation; charge idempotent)
+- [x] Observability: structured log dengan correlation_id di 9 titik + latency (provider/billing/total)
+- [x] ChargeResult +walletBalanceBefore (additive); env AI_PROVIDER_TIMEOUT_MS + DEEPINFRA_BASE_URL
+- [x] Unit + integration tests: 22 baru (total 237) — full pipeline dengan real services + fake transport/repos
+- [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / purity grep ✅
+
+### Implementasi — Milestone 8: REST API Layer (belum dimulai)
 
 Status: 🔴 Not Started — menunggu instruksi (jangan mulai sebelum approval)
 
 Tasks (saat implementasi nanti):
-- [ ] ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
-- [ ] POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
+- [ ] POST /v1/chat/completions + GET /v1/models (REST adapter di atas AIGateway)
+- [ ] Model registry resolution (model → modelId + pricingVersionId) + auth + rate limit
 - [ ] Reconciliation + Production Readiness Review + closure
 
 ---

@@ -106,6 +106,7 @@ export interface ChargeResult {
     totalCost: string
     currency: string
   }
+  walletBalanceBefore: string
   walletBalanceAfter: string
   walletStatus: string
   replayed: boolean
@@ -291,6 +292,7 @@ export class ChargeService {
           totalCost: breakdown.totalCost.toString(),
           currency: breakdown.currency,
         },
+        walletBalanceBefore: debit.transaction.balanceBefore.toFixed(6),
         walletBalanceAfter: debit.wallet.balance.toFixed(6),
         walletStatus,
         replayed: false,
