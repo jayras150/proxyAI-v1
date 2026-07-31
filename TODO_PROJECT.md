@@ -224,18 +224,31 @@ Status: ✅ **COMPLETED** (2026-07-31) — 133 tests, lint, build passed
 - [x] PricingVersion.currency column + env WALLET_MAX_NEGATIVE_BALANCE
 - [x] Unit + integration tests: 14 baru (total 133)
 
-### Implementasi — Milestone 4: Usage Metering & ChargeService
+### Implementasi — Milestone 4: Usage Meter (COMPLETED 2026-07-31)
 
-Status: 🔴 Not Started — menunggu instruksi
+Status: 🟢 COMPLETED
+
+- [x] UsageMeter pure domain component (src/server/billing/usage-meter.ts) — stateless, deterministic, zero DB/Prisma/repository/SDK dependency
+- [x] Provider adapter abstraction: UsageAdapter interface + register() — provider baru tanpa mengubah core
+- [x] Built-in adapters: DeepSeek (incl. legacy prompt_cache_hit_tokens) + OpenAI Compatible (alias openai/openai-compatible)
+- [x] Input: raw provider usage (object atau JSON string); output: TokenUsage (prompt/completion/cached/total)
+- [x] Normalisasi: cached di-decompose dari prompt → domain total == provider total_tokens
+- [x] Validation: non-negatif, safe integer (overflow protection), total konsisten, null handling, cached ≤ prompt, reasoning ≤ completion
+- [x] Errors: UsageMeterError (base) + UsageParseError / MalformedUsage / InvalidUsage / UnsupportedProvider
+- [x] Unit tests: 39 baru (total 172) — DeepSeek, OpenAI, cached, tanpa cached, malformed, unsupported, negative, mismatch, deterministic, overflow, null, reasoning, custom adapter
+- [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / purity grep ✅
+
+### Implementasi — Milestone 5: ChargeService (belum dimulai)
+
+Status: 🔴 Not Started — menunggu instruksi (jangan mulai sebelum approval)
 
 Tasks (saat implementasi nanti):
-- [ ] Usage metering service (UsageMeter pure + UsageLogRepository impl)
 - [ ] ChargeService (1 DB tx: debit wallet + transaction AI_USAGE + usage log + idempotency billing:usage)
 - [ ] RefundService + RefundRequestRepository impl
-- [ ] M5: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
-- [ ] M6: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
-- [ ] M7: Refund flow + reconciliation
-- [ ] M8: Production Readiness Review + closure
+- [ ] M6: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
+- [ ] M7: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
+- [ ] M8: Refund flow + reconciliation
+- [ ] M9: Production Readiness Review + closure
 - [ ] Wallet changes (ADR-0001): DROP CHECK constraint, WalletStatus.PAYMENT_REQUIRED, debitWithFloor, reaktivasi credit
 
 ---

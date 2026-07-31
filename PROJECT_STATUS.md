@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `852c015` — feat(billing): add pure pricing engine with documented formulas
+Commit: `271cf1d` — feat(billing): add pure usage meter with provider adapters
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 53%
+Completion: 54%
 
 Current Phase:
-- Billing Engine — Milestone 3 (Estimate Service)
+- Billing Engine — Milestone 4 (Usage Meter) ✅ COMPLETED
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅ — M4 berikutnya)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅ — M5 ChargeService berikutnya, belum dimulai)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -588,6 +588,62 @@ total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
 - [x] npm test: ✅ 104 passed (11 baru: token-usage 4, pricing-snapshot 4, cost-breakdown 3)
 - [x] Tidak ada konflik dengan Wallet (semua test Wallet tetap lulus)
 
+## Billing Engine — Milestone 4: Usage Meter (2026-07-31)
+
+### UsageMeter (pure domain component)
+
+- [x] src/server/billing/usage-meter.ts — satunya tempat yang memahami format usage provider; mengubah raw provider usage → TokenUsage
+- [x] Stateless, deterministic, zero dependency (hanya import TokenUsage; grep-verified: tidak ada Prisma/DB/repository/HTTP/provider SDK)
+- [x] TIDAK pernah: hitung harga, akses DB, buat UsageLog/Transaction, sentuh Wallet, emit event (domain ChargeService — M5)
+
+### Provider Mapping Review
+
+- [x] Abstraksi UsageAdapter (providerIds + extract) + register() — provider baru ditambah tanpa mengubah core UsageMeter (tested: custom adapter Anthropic-style)
+- [x] DeepSeekUsageAdapter — prompt/completion/total_tokens + prompt_tokens_details.cached_tokens (prefer) + legacy prompt_cache_hit_tokens (fallback) + completion_tokens_details.reasoning_tokens
+- [x] OpenAICompatibleUsageAdapter — openai/openai-compatible aliases, prompt_tokens_details.cached_tokens, reasoning_tokens
+- [x] Provider metadata di payload (model, provider, dll) diabaikan dengan aman
+- [x] Input menerima object atau JSON string; provider id case/space-insensitive
+
+### Validation Review
+
+- [x] Token tidak boleh negatif (InvalidUsage)
+- [x] Total konsisten: total_tokens provider harus == prompt + completion (cached di-decompose dari prompt, jadi domain total == provider total)
+- [x] Overflow protection: semua count harus safe integer (Number.isSafeInteger) + sum check
+- [x] Null handling: field wajib null → MalformedUsage; field opsional null → dianggap absent (0)
+- [x] cachedTokens ≤ promptTokens; reasoningTokens ≤ completionTokens (wajib, subset semantics)
+- [x] NaN / Infinity / fractional → InvalidUsage
+
+### Error Review
+
+- [x] UsageMeterError (base, code machine-readable)
+- [x] UsageParseError (USAGE_PARSE_ERROR — invalid JSON string)
+- [x] MalformedUsage (MALFORMED_USAGE — bukan object, field wajib hilang, tipe salah)
+- [x] InvalidUsage (INVALID_USAGE — negatif, overflow, mismatch, cached > prompt, reasoning > completion)
+- [x] UnsupportedProvider (UNSUPPORTED_PROVIDER — provider tidak terdaftar)
+- [x] UsageMeterErrorCode: USAGE_PARSE_ERROR, MALFORMED_USAGE, INVALID_USAGE, UNSUPPORTED_PROVIDER, INVALID_REGISTRATION
+
+### Test Coverage (39 test baru)
+
+- [x] DeepSeek usage (full payload + legacy fallback + parseDetailed reasoning) ✓
+- [x] OpenAI usage (+ alias + JSON string) ✓
+- [x] cached token (decompose + total konsisten) ✓
+- [x] tanpa cached token (default 0) ✓
+- [x] malformed usage (null, array, missing/wrong-typed/null required fields) ✓
+- [x] unsupported provider (+ undefined + custom-only meter) ✓
+- [x] negative token (prompt/completion/cached + fractional + NaN/Infinity) ✓
+- [x] total mismatch (dengan & tanpa cached) ✓
+- [x] deterministic (input sama → output sama, tidak mutasi input, antar instance) ✓
+- [x] overflow (single field + combined sum) ✓ / null handling ✓ / reasoning bounds ✓ / custom adapter ✓ / error codes ✓
+
+### Verification
+
+- [x] npm test: 172 passed (39 baru)
+- [x] tsc --noEmit ✅ / lint ✅ 0 errors 0 warnings / build ✅
+- [x] Tidak ada dependency database / repository / provider SDK (grep-verified, satu import: ./token-usage)
+- [x] Menghasilkan TokenUsage (instance check + nilai)
+
+> ✅ Milestone 4 COMPLETED.
+
 ---
 
 # In Progress
@@ -605,7 +661,7 @@ Status:
 Billing
 
 Status:
-🟡 Milestone 3 COMPLETED (Estimate Service) — M4 ChargeService berikutnya
+🟢 Milestone 4 COMPLETED (Usage Meter) — M5 ChargeService berikutnya, belum dimulai
 
 Dashboard
 
@@ -616,17 +672,7 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 4 (Usage Metering & ChargeService)** — implementasi berikutnya.
-
-Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance. M1 (schema/migration/VO/repository interfaces), M2 (PricingEngine pure), M3 (EstimateService read-only) selesai 2026-07-31.
-
-Expected Deliverables (saat implementasi nanti)
-
-- Usage metering service
-- ChargeService (debit + transaction + usage log, 1 DB tx)
-- Wallet deduction after AI request (via WalletService.debit)
-- Idempotency support
-- Refund strategy
+**Billing Engine — Milestone 5 (ChargeService)** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 
