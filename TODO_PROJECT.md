@@ -180,14 +180,30 @@ Seluruh milestone Wallet selesai, diverifikasi (93 tests), dan disetujui. Wallet
 
 ## 📋 Next Priority: Billing Engine
 
-Status: 🔴 Not Started — NEXT MODULE (setelah Wallet Module ditutup)
+### Design — LOCKED ✅
 
-Tasks:
-- [ ] Pricing engine server service
-- [ ] Usage accounting
-- [ ] Wallet deduction after AI request (via WalletService.debit)
-- [ ] Idempotency support (reuse IdempotencyService, scope billing:usage)
-- [ ] Refund strategy
+Status: 📘 **APPROVED FOR IMPLEMENTATION** (locked 2026-07-31)
+
+- [x] Billing Design Review v1 (arsitektur, DB, domain, API, sequence, state machine, failure, security, scalability)
+- [x] Billing Design Review v2 (10 revisi — service separation, pricing snapshot, streaming lifecycle, reserve, pricing versioning, refund state machine, domain events, sequence diagrams, wallet debit strategy, final architecture review)
+- [x] ADR-0001 Controlled Negative Balance (docs/adr/0001-controlled-negative-balance.md)
+- [x] Final Design Polish (business policy vs integrity rule; PAYMENT_REQUIRED system-generated)
+
+Keputusan kunci: post-paid debit (A), tanpa reserve V1, PricingVersion table, negative balance via env policy (bukan CHECK), PAYMENT_REQUIRED system-only.
+
+### Implementasi — belum dimulai
+
+Status: 🔴 Not Started — Milestone 1 (Pricing Engine) menunggu instruksi
+
+Tasks (saat implementasi nanti):
+- [ ] M1: PricingEngine (pure) — estimate/final, markup, min charge, rounding
+- [ ] M2: Usage Metering + UsageLogRepository + UsageStatus enum
+- [ ] M3: ChargeService + RefundService (1 DB tx, idempotency billing:usage)
+- [ ] M4: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
+- [ ] M5: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
+- [ ] M6: Refund flow + reconciliation
+- [ ] M7: Production Readiness Review + closure
+- [ ] Wallet changes (ADR-0001): DROP CHECK constraint, WalletStatus.PAYMENT_REQUIRED, debitWithFloor, reaktivasi credit
 
 ---
 

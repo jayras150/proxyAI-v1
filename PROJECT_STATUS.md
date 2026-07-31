@@ -20,7 +20,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (NEXT)
+3. 🔄 Build Billing Engine (design locked — implementasi Milestone 1 berikutnya)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -406,6 +406,37 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 
 ---
 
+## Billing Engine — DESIGN LOCKED (2026-07-31)
+
+**Status: 📘 APPROVED FOR IMPLEMENTATION**
+
+Design terkunci — tidak akan diubah sebelum implementasi dimulai.
+
+### Artefak Desain
+
+- [x] Billing Design Review v1 (arsitektur, DB, domain, API, sequence, state machine, failure, security, scalability, plan)
+- [x] Billing Design Review v2 (10 revisi: service separation, pricing snapshot, streaming lifecycle, reserve decision, pricing versioning, refund state machine, domain events, sequence diagrams, wallet debit strategy, final architecture review)
+- [x] ADR-0001 Controlled Negative Balance (docs/adr/0001-controlled-negative-balance.md, commit f598810)
+- [x] Final Design Polish (business policy vs integrity rule; ownership PAYMENT_REQUIRED system-generated)
+
+### Keputusan Arsitektur Kunci (locked)
+
+- Service: PricingEngine / EstimateService / ChargeService / RefundService / UsageMeter — tanpa god service
+- Debit: **post-paid (opsi A)** — debit setelah provider selesai
+- Reserve: **tidak ada di V1** (opsi A) — B/C di V2
+- Pricing: tabel **PricingVersion** (AiModel 1—N) + snapshot wajib di UsageLog
+- Negative balance: business policy `WALLET_MAX_NEGATIVE_BALANCE` (env, default 0.10 USD) — ditegakkan WalletService (conditional atomic), bukan CHECK constraint
+- Status `PAYMENT_REQUIRED`: system-generated (hanya WalletService debit/credit), bukan administratif
+- Streaming: billing tidak pernah blokir stream; billing tidak bergantung koneksi client
+
+### Perubahan Wallet yang dibutuhkan saat implementasi (tercatat, belum dikerjakan)
+
+- [ ] DROP CHECK constraint `wallets_balance_non_negative` (migration) → enforcement di WalletService
+- [ ] `enum WalletStatus` + `PAYMENT_REQUIRED`
+- [ ] `WalletService.debitWithFloor` + reaktivasi otomatis di credit
+
+---
+
 # In Progress
 
 ## Authentication
@@ -421,7 +452,7 @@ Status:
 Billing
 
 Status:
-🔴 Not Started — NEXT MODULE
+📘 Design APPROVED FOR IMPLEMENTATION (locked 2026-07-31) — implementasi belum dimulai
 
 Dashboard
 
@@ -432,9 +463,11 @@ Status:
 
 # Next Task
 
-**Billing Engine** — next priority module.
+**Billing Engine — Milestone 1 (Pricing Engine)** — implementasi berikutnya.
 
-Expected Deliverables
+Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance.
+
+Expected Deliverables (saat implementasi nanti)
 
 - Pricing engine server service
 - Usage accounting
