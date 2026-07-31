@@ -13,4 +13,13 @@ export const RATE_LIMITS = {
 
   /** API key management — 300 req/min per identity */
   apiKeys: { scope: 'api-keys', limit: 300, windowSeconds: 60 },
+
+  /** Wallet read endpoints (GET wallet, GET transactions, GET topup) — 300/min */
+  walletRead: { scope: 'wallet:read', limit: 300, windowSeconds: 60 },
+
+  /** Topup creation (creates payment intents) — 60/min */
+  walletTopup: { scope: 'wallet:topup', limit: 60, windowSeconds: 60 },
+
+  /** Payment webhooks — higher limit (provider retries), signature-gated */
+  webhookPayments: { scope: 'webhook:payments', limit: 1200, windowSeconds: 60 },
 } as const

@@ -1,0 +1,391 @@
+openapi: 3.1.0
+info:
+  title: ProxyAI Wallet API
+  version: 1.0.0
+  description: |
+    Wallet, top-up and payment webhook endpoints.
+    Money values are ALWAYS decimal strings (never numbers).
+servers:
+  - url: https://api.proxyai.live/api
+security:
+  - bearerAuth: []
+paths:
+  /v1/wallet:
+    get:
+      operationId: getWallet
+      summary: Get wallet balance and status
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/wallet/transactions:
+    get:
+      operationId: listTransactions
+      summary: List wallet transactions (cursor pagination)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from the previous page (next_cursor).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Transaction page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/wallet/topups:
+    post:
+      operationId: createTopup
+      summary: Create a top-up request (payment intent)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: X-Idempotency-Key
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Idempotency key (same key + same body → same response).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTopupRequest'
+            examples:
+              default:
+                value:
+                  amount: '50.00'
+      responses:
+        '201':
+          description: Top-up request created with payment intent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopupCreatedResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '423':
+          $ref: '#/components/responses/Locked'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/wallet/topups/{id}:
+    get:
+      operationId: getTopup
+      summary: Get top-up status (polling)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Top-up request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopupResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/webhooks/payments:
+    post:
+      operationId: handlePaymentWebhook
+      summary: Payment provider webhook (signature-authenticated)
+      security:
+        - webhookSignature: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookPayload'
+      responses:
+        '200':
+          description: Webhook acknowledged (processed | duplicate | ignored)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebhookAck'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    webhookSignature:
+      type: apiKey
+      in: header
+      name: x-mock-signature
+      description: HMAC-SHA256 signature of the raw body (provider secret).
+  schemas:
+    Money:
+      type: string
+      description: Decimal money as string, e.g. "50.000000". Never a number.
+      example: '50.000000'
+    ErrorEnvelope:
+      type: object
+      required: [success, error, request_id]
+      properties:
+        success:
+          type: boolean
+          const: false
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+        request_id:
+          type: string
+    SuccessEnvelope:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+          const: true
+        data:
+          type: object
+        request_id:
+          type: string
+    WalletResponse:
+      type: object
+      required: [id, balance, currency, status]
+      properties:
+        id:
+          type: string
+        balance:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+          enum: [USD, IDR, SGD]
+        status:
+          type: string
+          enum: [ACTIVE, LOCKED, SUSPENDED]
+    TransactionItem:
+      type: object
+      required: [id, type, amount, balance_before, balance_after, currency, status, created_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [TOPUP, AI_USAGE, REFUND, ADJUSTMENT, ADMIN_CREDIT, ADMIN_DEBIT]
+        amount:
+          $ref: '#/components/schemas/Money'
+        balance_before:
+          $ref: '#/components/schemas/Money'
+        balance_after:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+        status:
+          type: string
+        reference:
+          type: string
+        description:
+          type: [string, 'null']
+        created_at:
+          type: string
+          format: date-time
+    TransactionPage:
+      type: object
+      required: [items, next_cursor, has_more]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransactionItem'
+        next_cursor:
+          type: [string, 'null']
+          description: Opaque cursor for the next page (null when last page).
+        has_more:
+          type: boolean
+    CreateTopupRequest:
+      type: object
+      required: [amount]
+      properties:
+        amount:
+          type: string
+          pattern: '^\d+(\.\d{1,6})?$'
+          example: '50.00'
+    PaymentIntent:
+      type: object
+      required: [provider_reference, checkout_url, token, expires_at]
+      properties:
+        provider_reference:
+          type: string
+        checkout_url:
+          type: [string, 'null']
+        token:
+          type: [string, 'null']
+        expires_at:
+          type: string
+          format: date-time
+    TopupCreatedResponse:
+      type: object
+      required: [topup, payment]
+      properties:
+        topup:
+          $ref: '#/components/schemas/TopupResponse'
+        payment:
+          $ref: '#/components/schemas/PaymentIntent'
+    TopupResponse:
+      type: object
+      required: [id, status, amount, currency, expires_at]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, EXPIRED]
+        amount:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+        provider:
+          type: string
+        provider_reference:
+          type: [string, 'null']
+        transaction_id:
+          type: [string, 'null']
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+    WebhookPayload:
+      type: object
+      required: [eventId, providerReference, amount, currency, status]
+      properties:
+        eventId:
+          type: string
+        providerReference:
+          type: string
+        amount:
+          type: string
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [PAID, FAILED]
+        timestamp:
+          type: string
+          format: date-time
+    WebhookAck:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [outcome]
+          properties:
+            outcome:
+              type: string
+              enum: [processed, duplicate, ignored]
+        request_id:
+          type: string
+  responses:
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Conflict:
+      description: Conflict (insufficient balance, idempotency, state transition)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    Locked:
+      description: Wallet is locked
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimited:
+      description: Too many requests
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+tags:
+  - name: Wallet
+  - name: Topup
+  - name: Webhook

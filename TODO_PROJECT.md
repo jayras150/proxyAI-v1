@@ -122,6 +122,20 @@ Latest commit: `0a783a8` — refactor(auth): consolidate auth helpers and single
 - [x] Unit + integration tests: 64 passed (replay, forged, mismatch, FAILED, concurrency double-credit)
 - [x] prisma generate ✅ / tsc ✅ / lint ✅ / build ✅
 
+### Wallet System — Milestone 4: API Layer (2026-07-31)
+
+- [x] openapi/v1.yaml (OpenAPI 3.1, 5 endpoints, security, schemas, examples)
+- [x] GET /api/v1/wallet
+- [x] GET /api/v1/wallet/transactions (cursor pagination)
+- [x] POST /api/v1/wallet/topups (idempotency key)
+- [x] GET /api/v1/wallet/topups/:id
+- [x] POST /api/v1/webhooks/payments (signature auth)
+- [x] Zod validation semua request; response contract nested error global
+- [x] Error mapping terpusat (423/409/400/401 dll)
+- [x] Rate limit per-endpoint + structured request logging
+- [x] API tests + OpenAPI validation: 85 tests passed
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ / build ✅
+
 ### Technical Debt (R5-R9 + R10)
 
 - [ ] R5 — ms() → lib/time.ts
@@ -183,6 +197,22 @@ Tasks:
 - [ ] Webhook /api/v1/webhooks/payments
 - [ ] OpenAPI spec validation
 - [ ] UI: balance card, topup form, transaction history
+
+## 📋 In Progress
+
+### Wallet System — Milestone 4: API Layer
+
+Status: ✅ COMPLETE (2026-07-31) — 85 tests, lint, build passed
+
+### Wallet System — Milestone 5: UI
+
+Status: 🔴 Not Started — menunggu persetujuan setelah M4
+
+Tasks:
+- [ ] Dashboard balance card (fetch /api/v1/wallet)
+- [ ] Topup form (amount, idempotency key, payment intent display)
+- [ ] Transaction history (cursor load more)
+- [ ] Topup status polling
 
 ### Billing Engine
 

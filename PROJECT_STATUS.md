@@ -8,17 +8,17 @@ Commit: `0a783a8` — refactor(auth): consolidate auth helpers and single sessio
 
 Project Status: 🚧 In Development
 
-Completion: 37%
+Completion: 42%
 
 Current Phase:
-- Wallet System — Milestone 3 (Topup & Payment Services)
+- Wallet System — Milestone 4 (API Layer)
 
 ---
 
 # Current Objectives
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
-2. 🔄 Build Wallet System (M1 ✅, M2 ✅, M3 ✅, M4 pending)
+2. 🔄 Build Wallet System (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 pending)
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
@@ -310,6 +310,43 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 ### Next Milestone (belum dikerjakan)
 
 - M4: API Routes /api/v1 + Webhook endpoint + UI (balance card, topup form, transaction history)
+
+## Wallet System — Milestone 4: API Layer (2026-07-31)
+
+### OpenAPI 3.1
+
+- [x] openapi/v1.yaml — 5 endpoints, schemas (Money string, ErrorEnvelope, WalletResponse, TransactionPage, TopupResponse, PaymentIntent, WebhookAck), securitySchemes (bearerAuth JWT + webhookSignature HMAC), responses incl. RateLimited headers, examples
+- [x] OpenAPI validation test (7 assertions: 3.1, endpoints, security, envelopes, money-as-string)
+
+### Wallet API
+
+- [x] GET /api/v1/wallet — balance/currency/status (JWT)
+- [x] GET /api/v1/wallet/transactions — cursor pagination (JWT, Zod query)
+- [x] POST /api/v1/wallet/topups — create topup + payment intent (JWT + X-Idempotency-Key, Zod body)
+- [x] GET /api/v1/wallet/topups/:id — status polling (JWT, owner-scoped)
+- [x] POST /api/v1/webhooks/payments — signature-auth (HMAC header, bukan JWT)
+
+### API Layer Properties
+
+- [x] Response contract: success/data/request_id + error/code/message/details (jsonError nested form, global)
+- [x] Zod validation semua request (createTopupSchema, transactionsQuerySchema, topupQuerySchema) — tidak ada parsing manual
+- [x] Authorization: user hanya lihat wallet/transaksi/topup sendiri (userId dari token)
+- [x] Error mapping terpusat (src/lib/api-error-mapper.ts): WalletLocked→423, InsufficientBalance→409, CurrencyMismatch→400, Idempotency→409, InvalidSignature→401, dll
+- [x] Rate limiting per-endpoint: walletRead 300/min, walletTopup 60/min, webhookPayments 1200/min
+- [x] Structured logging semua request: request_id, correlation_id, user_id, wallet_id, topup_id, transaction_id, provider, status_code, duration_ms
+- [x] Composition root (src/server/composition.ts) — route tidak membangun service
+- [x] API hanya adapter: tidak ada business logic/Prisma di route (grep-verified)
+
+### Verification
+
+- [x] API tests: wallet route (auth 401, balance string, 404, cursor, validation), topup route (idempotency, validation, auth), webhook route (end-to-end credit, forged 401)
+- [x] OpenAPI validation: 7/7
+- [x] npm test: 85 passed
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ 0/0 / build ✅ (5 v1 routes)
+
+### Next Milestone (belum dikerjakan)
+
+- M5: UI (dashboard balance card, topup form, transaction history)
 
 ---
 

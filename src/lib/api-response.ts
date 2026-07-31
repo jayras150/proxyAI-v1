@@ -1,9 +1,9 @@
 // ProxyAI — Standard API Response Helpers
 // Blueprint Reference: Sprint 9 §58-59 — API Standards & Response Contract
-//
-// Every API response carries a `request_id` (and `X-Request-Id` header) for
-// request correlation. These helpers are route-agnostic and reusable across
-// the whole ProxyAI API surface.
+// Design Review Wallet §3 — Standard Response Contract (approved):
+//   Success: { success: true, data, request_id }
+//   Error:   { success: false, error: { code, message, details }, request_id }
+// Every response carries a request_id + X-Request-Id header.
 
 import { NextResponse } from 'next/server'
 import { generateRequestId } from '@/lib/request-id'
@@ -14,6 +14,10 @@ interface ResponseOptions {
   status?: number
   headers?: Record<string, string>
   requestId?: string
+}
+
+export interface ErrorDetails {
+  [key: string]: unknown
 }
 
 function buildHeaders(requestId: string, extra?: Record<string, string>): Record<string, string> {
@@ -46,21 +50,24 @@ export function jsonSuccess<T>(
 }
 
 /**
- * Error response: { success: false, code, message, request_id }
+ * Error response: { success: false, error: { code, message, details }, request_id }
  * Never includes stack traces.
  */
 export function jsonError(
   code: string,
   message: string,
-  options: ResponseOptions = {}
+  options: ResponseOptions & { details?: ErrorDetails } = {}
 ): NextResponse {
   const requestId = options.requestId ?? generateRequestId()
 
   return NextResponse.json(
     {
       success: false,
-      code,
-      message,
+      error: {
+        code,
+        message,
+        details: options.details ?? {},
+      },
       request_id: requestId,
     },
     {

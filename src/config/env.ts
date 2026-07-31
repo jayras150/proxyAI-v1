@@ -30,6 +30,7 @@ export const env = {
   // Payments
   paymentProvider: envOptional('PAYMENT_PROVIDER', 'mock'),
   mockPaymentWebhookSecret: envOptional('MOCK_PAYMENT_WEBHOOK_SECRET', 'mock-secret-dev'),
+  webhookSignatureHeader: envOptional('WEBHOOK_SIGNATURE_HEADER', 'x-mock-signature'),
   topupExpiryMinutes: Number(envOptional('TOPUP_EXPIRY_MINUTES', '30')),
 
   // App
