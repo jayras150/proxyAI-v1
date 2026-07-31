@@ -49,6 +49,7 @@ export interface RefundRepository {
     id: string,
     transactionId: string,
     expectedVersion: number,
-    tx?: Prisma.TransactionClient
+    tx?: Prisma.TransactionClient,
+    approvedBy?: string
   ): Promise<RefundRequest | null>
 }

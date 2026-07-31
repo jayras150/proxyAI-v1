@@ -9,6 +9,7 @@ export type DomainEventType =
   | 'topup.completed'
   | 'topup.failed'
   | 'billing.charged'
+  | 'billing.refunded'
   | 'refund.completed'
 
 export interface DomainEventMetadata {
@@ -31,6 +32,8 @@ export interface DomainEventMetadata {
   cachedTokens?: number
   totalTokens?: number
   walletStatusAfter?: string
+  // billing.refunded (Billing Milestone 6)
+  refundRequestId?: string
 }
 
 export interface DomainEvent {

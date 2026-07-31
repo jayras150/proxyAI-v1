@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `ac2fefb` — feat(billing): add charge service with atomic settlement
+Commit: `1909c4b` — feat(billing): add refund service with atomic credit-back
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 55%
+Completion: 56%
 
 Current Phase:
-- Billing Engine — Milestone 5 (Charge Service) ✅ COMPLETED
+- Billing Engine — Milestone 6 (Refund Service) ✅ COMPLETED
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅ — M6 berikutnya, belum dimulai)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅ — M7 berikutnya, belum dimulai)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -712,6 +712,68 @@ total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
 
 > ✅ Milestone 5 COMPLETED.
 
+## Billing Engine — Milestone 6: Refund Service (2026-07-31)
+
+### RefundService (satu-satunya service yang mengembalikan saldo wallet)
+
+- [x] src/server/billing/refund.service.ts — refund penuh dari UsageLog.userCost (tidak pernah melebihi yang ditagih)
+- [x] Flow: replay gate → validasi UsageLog (COMPLETED, belum refund, milik user) → SATU DB transaction → emit setelah commit
+- [x] Di dalam satu transaction: reserve idempotency + create RefundRequest + WalletService.creditInTransaction (Transaction REFUND) + UsageLog → REFUNDED + RefundRequest → COMPLETED (optimistic lock) + idempotency result
+- [x] TIDAK pernah: hitung biaya baru, panggil provider, estimate, handle HTTP (grep-verified — tidak ada PricingEngine/fetch/route)
+- [x] Replay gate DI DEPAN validasi eligibility — retry refund sukses → replay stored result, bukan ALREADY_REFUNDED (design fix ditemukan via test)
+
+### Transaction Review
+
+- [x] Transaction(REFUND) dibuat oleh WalletService.creditInTransaction di dalam tx yang sama (reference refund_<requestId|usageLogId>)
+- [x] balanceBefore/balanceAfter akurat; providerReference = usageLogId (audit trail ke charge)
+- [x] RefundRequest.transactionId ter-link (1:1 unique)
+
+### Atomicity Review
+
+- [x] Seluruh operasi refund dalam SATU DB transaction — markRefunded gagal → credit + refund request + idempotency di-rollback (tested)
+- [x] Wallet credit ditolak (wallet SUSPENDED) → full rollback, usage tetap COMPLETED (tested)
+- [x] Tidak ada partial update / tidak ada event pada kegagalan (tested)
+
+### Idempotency Review
+
+- [x] Scope wallet:refund; reserve → complete dalam satu tx; replay mengembalikan stored result tanpa double credit (tested)
+- [x] Same key + payload beda → KEY_REUSED_WITH_DIFFERENT_REQUEST (tested)
+- [x] Concurrent duplicate → P2002 → re-reserve → replay / IN_PROGRESS (tested)
+
+### Event Review
+
+- [x] billing.refunded + wallet.credited di-emit HANYA setelah commit (tested: sukses → 2 event; gagal → 0)
+- [x] Replay TIDAK mengirim ulang event; metadata refundRequestId ditambahkan ke DomainEventMetadata
+
+### Business Rules
+
+- [x] Satu UsageLog hanya satu refund: @@unique([usageLogId]) + pre-check findByUsageLogId di dalam tx + status guard markRefunded (COMPLETED-only)
+- [x] Refund = userCost persis (full refund) → tidak mungkin melebihi yang ditagih
+- [x] Optimistic locking: RefundRequest.version (1 → 2), markCompleted guarded oleh version + status (tested: stale write → null, already-completed → null)
+- [x] Schema: RefundRequest.version Int @default(1) ditambahkan (schema.prisma + migration billing_foundation), prisma validate ✅
+- [x] PAYMENT_REQUIRED wallet di-reaktivasi otomatis saat refund mengembalikan balance >= 0 (tested)
+
+### Repository
+
+- [x] src/server/refund/prisma-refund.repository.ts — create/findById/findByUsageLogId/pagination/updateStatus/markCompleted (version-guarded)
+- [x] markCompleted: REQUESTED/APPROVED → COMPLETED + transactionId + approvedBy (audit), interface +approvedBy opsional
+
+### Test Coverage (19 test baru)
+
+- [x] normal refund ✓ / wallet credit ✓ / usage berubah REFUNDED ✓ / transaction REFUND ✓
+- [x] duplicate refund (status REFUNDED & pre-existing refund request) ✓
+- [x] idempotency replay (tanpa double credit) ✓ / same key different payload ✓
+- [x] rollback (markRefunded gagal, credit ditolak) ✓ / optimistic locking (version + stale + already-completed) ✓
+- [x] event setelah commit (sukses 2, gagal 0) ✓ / race condition (2 parallel → credit sekali) ✓ / IN_PROGRESS ✓
+- [x] USAGE_NOT_FOUND / USAGE_NOT_ELIGIBLE / USER_MISMATCH / WALLET_NOT_FOUND ✓ / PAYMENT_REQUIRED reactivation ✓ / deterministic ✓
+
+### Verification
+
+- [x] npm test: 215 passed (19 baru) / tsc ✅ / lint ✅ 0:0 / build ✅ / prisma validate ✅
+- [x] Satu transaction untuk seluruh operasi refund / WalletService.credit digunakan / events hanya setelah commit (tested)
+
+> ✅ Milestone 6 COMPLETED.
+
 ---
 
 # In Progress
@@ -729,7 +791,7 @@ Status:
 Billing
 
 Status:
-🟢 Milestone 5 COMPLETED (Charge Service) — M6 berikutnya, belum dimulai
+🟢 Milestone 6 COMPLETED (Refund Service) — M7 berikutnya, belum dimulai
 
 Dashboard
 
@@ -740,7 +802,7 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 6** — menunggu instruksi (jangan mulai sebelum approval).
+**Billing Engine — Milestone 7** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 

@@ -249,16 +249,25 @@ Status: 🟢 COMPLETED
 - [x] Unit + integration tests: 24 baru (total 196) — normal, replay, duplicate, floor aman/terlampaui, PAYMENT_REQUIRED, rollback, optimistic locking, event setelah commit, deterministic, race, chargeRaw+UsageMeter
 - [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / no HTTP / no partial update
 
-### Implementasi — Milestone 6: Provider Gateway (belum dimulai)
+### Implementasi — Milestone 6: Refund Service (COMPLETED 2026-07-31)
+
+Status: 🟢 COMPLETED
+
+- [x] RefundService (src/server/billing/refund.service.ts) — refund penuh userCost, satu DB transaction (replay gate → validasi → create RefundRequest + credit + Transaction REFUND + UsageLog REFUNDED + markCompleted), events setelah commit
+- [x] PrismaRefundRepository (optimistic lock via RefundRequest.version — kolom ditambahkan ke schema + migration)
+- [x] Business rules: satu refund per usage (@@unique usageLogId + guards), refund ≤ yang ditagih (== userCost), PAYMENT_REQUIRED reactivation via credit
+- [x] Errors: RefundError (USAGE_NOT_FOUND, USAGE_NOT_ELIGIBLE, ALREADY_REFUNDED, USER_MISMATCH, WALLET_NOT_FOUND, CURRENCY_MISMATCH, REFUND_FAILED)
+- [x] Unit + integration tests: 19 baru (total 215) — normal, duplicate, replay, rollback, optimistic locking, wallet credit, REFUNDED, events, race, IN_PROGRESS, deterministic
+- [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / prisma validate ✅ / no HTTP / no partial update
+
+### Implementasi — Milestone 7: Provider Gateway (belum dimulai)
 
 Status: 🔴 Not Started — menunggu instruksi (jangan mulai sebelum approval)
 
 Tasks (saat implementasi nanti):
 - [ ] ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
 - [ ] POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
-- [ ] RefundService + RefundRequestRepository impl + refund flow + reconciliation
-- [ ] Production Readiness Review + closure
-- [ ] Wallet changes sisa (ADR-0001): DROP CHECK constraint migration sudah ada di M1, debitWithFloor sudah ada — verifikasi saat deploy
+- [ ] Reconciliation + Production Readiness Review + closure
 
 ---
 

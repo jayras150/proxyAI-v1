@@ -344,6 +344,7 @@ model RefundRequest {
   amount          Decimal      @db.Decimal(18, 6)
   currency        Currency     @default(USD)
   status          RefundStatus @default(REQUESTED)
+  version         Int          @default(1) // optimistic locking
   reason          String?
   requestedBy     String // 'user:<id>' | 'admin:<id>' | 'system'
   approvedBy      String?
