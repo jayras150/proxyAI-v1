@@ -12,6 +12,7 @@ Completion: 60%
 
 Current Phase:
 - Billing Module — ✅ APPROVED FOR PRODUCTION (CLOSED, 2026-07-31)
+- User Dashboard — 📘 DESIGN APPROVED FOR IMPLEMENTATION (2026-07-31, implementation NOT started)
 
 ---
 
@@ -1034,13 +1035,13 @@ Status:
 Dashboard
 
 Status:
-🔴 Not Started
+📘 Design APPROVED FOR IMPLEMENTATION (docs/design/user-dashboard-design.md) — implementation 🔴 NOT started
 
 ---
 
 # Next Task
 
-**User Dashboard (frontend)** — menunggu instruksi (jangan mulai sebelum approval).
+**User Dashboard implementation — M1 (Foundation: design system + app shell)** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 

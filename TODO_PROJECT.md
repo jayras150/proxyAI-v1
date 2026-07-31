@@ -321,13 +321,18 @@ Tasks:
 
 ### User Dashboard
 
-Status: 🔴 Not Started
+Status: 📘 **DESIGN APPROVED FOR IMPLEMENTATION** (2026-07-31) — implementation NOT started
 
-Tasks:
-- [ ] Home page with widgets
-- [ ] Usage charts
-- [ ] Transaction history
-- [ ] Settings page
+- [x] Architecture & UX design (docs/design/user-dashboard-design.md): IA, navigation, page/component hierarchy, data flow, API mapping, UX/responsive review, roadmap M1-M6
+- [x] Backend gaps diidentifikasi (additive, perlu approval saat milestone-nya): GET /v1/dashboard/summary, GET /v1/wallet/topups (list), PATCH /v1/me, POST /auth/change-password, GET/DELETE /auth/sessions, price fields di GET /v1/models
+
+Tasks (saat implementasi nanti, per milestone M1-M6 di design doc):
+- [ ] M1 — Design system + app shell (sidebar/bottom-nav, dark mode, primitives, AuthGuard, TanStack Query)
+- [ ] M2 — Home: widgets + GET /v1/dashboard/summary + PAYMENT_REQUIRED banner
+- [ ] M3 — Wallet + Topup (idempotent create, polling) + Transactions (filter/search/refund)
+- [ ] M4 — Usage charts + Models (pricing fields)
+- [ ] M5 — Profile + Security (password/sessions) + Settings + API Keys rotate
+- [ ] M6 — Hardening & production readiness review
 
 ### Admin Dashboard
 
