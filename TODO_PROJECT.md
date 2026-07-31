@@ -2,7 +2,7 @@
 
 Last Updated: 2026-07-31
 
-Latest commit: `e85dcbd` — feat(auth): add rate limiting, request_id and security headers
+Latest commit: `0a783a8` — refactor(auth): consolidate auth helpers and single session lifetime source
 
 ---
 
@@ -79,22 +79,30 @@ Latest commit: `e85dcbd` — feat(auth): add rate limiting, request_id and secur
 
 ## ✅ Completed Tasks
 
-### Architecture Review Cleanup — R1-R4 (2026-07-31)
+### Wallet System — Milestone 1: Database Foundation (2026-07-31)
 
-- [x] R1 — Hapus dead code middleware/auth.ts; satu pola auth (getAuthenticatedUser di src/lib/auth-request.ts)
-- [x] R2 — Extract toUserProfile + userProfileSelect ke src/lib/user-profile.ts
-- [x] R3 — Extract createSession ke src/server/auth/session.ts
-- [x] R4 — Satu sumber refresh token lifetime (env.refreshExpiresInDays); constants.ts dihapus
-- [x] Perilaku API tidak berubah (verified: 401 + request_id + rate-limit headers; 65 req → 60 + 5× 429)
-- [x] npm run lint ✅ / npm run build ✅
+- [x] Review Blueprint Wallet (Sprint 4 §19-26, Sprint 8 §52-57, Sprint 9, Sprint 10 §73-75)
+- [x] Prisma schema: 8 enum (Currency, WalletStatus, TransactionType, TransactionStatus, TopupStatus, PaymentProvider, IdempotencyStatus, WebhookEventStatus)
+- [x] Models: Wallet (+status, +version, currency enum, index [userId,status])
+- [x] Models: Transaction (+enum status, audit metadata, cursor index [walletId,createdAt,id])
+- [x] Models: TopupRequest (lifecycle status, provider, unique providerReference/transactionId, expiresAt required)
+- [x] Models: IdempotencyKey (unique [key,scope,userId], requestHash, response)
+- [x] Models: WebhookEvent (unique [provider,providerEventId], payloadHash)
+- [x] Constraints: FK lengkap, unique, composite index, CHECK SQL documented (balance>=0, amount>0)
+- [x] Migration: prisma/migrations/20260731150000_wallet_foundation + migration_lock.toml
+- [x] Repository interfaces: WalletRepository, TransactionRepository, TopupRequestRepository, IdempotencyKeyRepository, WebhookEventRepository
+- [x] Verification: prisma validate/generate ✅, tsc ✅, lint ✅ 0/0, build ✅
+- [x] Self review: no duplicate model / missing index / circular relation / ambiguous relation / unused enum; expiresAt → required
+- ⚠️ Migration belum di-apply ke DB live (butuh Supabase credentials) — dijadwalkan saat deploy
 
-### Technical Debt (R5-R9) — dicatat, dikerjakan nanti
+### Technical Debt (R5-R9 + R10)
 
 - [ ] R5 — ms() → lib/time.ts
 - [ ] R6 — RedisRateLimiter retryAfterSeconds via ttl
 - [ ] R7 — unused type exports validation.ts
 - [ ] R8 — isJwtError() helper
 - [ ] R9 — prisma CLI → devDependencies
+- [ ] R10 — Auth retrofit ke repository pattern + /api/v1/
 
 ### Authentication Module — Fully Blueprint Compliant
 
@@ -102,20 +110,21 @@ Status: ✅ COMPLETE
 
 ---
 
-## 📋 Upcoming Tasks
+## 📋 In Progress
 
-### Wallet System
+### Wallet System — Milestone 2: Repository Implementation & Services
 
-Status: 🔴 Not Started — NEXT TASK
+Status: 🔴 Not Started — menunggu persetujuan setelah M1
 
 Tasks:
-- [ ] Wallet CRUD server service
-- [ ] Top-up endpoint
-- [ ] Balance validation
-- [ ] Transaction creation
-- [ ] Wallet API routes
-- [ ] Wallet UI (balance display, top-up)
-- [ ] Transaction history UI
+- [ ] Repository implementations (Prisma) untuk 5 domain
+- [ ] IdempotencyService (reusable)
+- [ ] WalletService (get, credit, debit, validate-balance)
+- [ ] TransactionService (history cursor)
+- [ ] TopupService + PaymentService + MockProvider
+- [ ] API Routes /api/v1/wallet/*
+- [ ] Webhook /api/v1/webhooks/payments
+- [ ] UI: balance card, topup form, transaction history
 
 ### Billing Engine
 

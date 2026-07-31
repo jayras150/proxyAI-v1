@@ -2,23 +2,23 @@
 
 Last Updated: 2026-07-31
 
-Commit: `e85dcbd` — feat(auth): add rate limiting, request_id and security headers
+Commit: `0a783a8` — refactor(auth): consolidate auth helpers and single session lifetime source
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 27%
+Completion: 30%
 
 Current Phase:
-- Authentication — Architecture Review cleanup (R1-R4)
+- Wallet System — Milestone 1 (Database Foundation)
 
 ---
 
 # Current Objectives
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
-2. 🔄 Build Wallet System
+2. 🔄 Build Wallet System (Milestone 1 done, M2+ pending)
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
@@ -152,6 +152,57 @@ Current Phase:
 - [ ] R7 — Hapus unused type exports di validation.ts
 - [ ] R8 — Extract isJwtError() helper
 - [ ] R9 — Pindah prisma CLI ke devDependencies
+
+## Wallet System — Milestone 1: Database Foundation (2026-07-31)
+
+### Prisma Schema (Wallet Domain)
+
+- [x] Enums: Currency, WalletStatus, TransactionType, TransactionStatus, TopupStatus, PaymentProvider, IdempotencyStatus, WebhookEventStatus
+- [x] Wallet: + status (WalletStatus), + version (optimistic locking), currency → enum, @@index([userId, status])
+- [x] Transaction: status → enum, + audit metadata (requestId, userId denormalized, providerReference, createdBy, ipAddress, userAgent), @@index([walletId, createdAt, id]) cursor pagination
+- [x] TopupRequest: status lifecycle (PENDING/PAID/FAILED/EXPIRED), provider enum, providerReference @unique, transactionId @unique (1:1), expiresAt required
+- [x] IdempotencyKey: @@unique([key, scope, userId]), requestHash, response Json, expiresAt
+- [x] WebhookEvent: @@unique([provider, providerEventId]), payloadHash, status lifecycle
+
+### Migration
+
+- [x] prisma/migrations/20260731150000_wallet_foundation/migration.sql (generated via prisma migrate diff)
+- [x] CHECK constraints documented as SQL (Prisma tidak support native): wallets_balance_non_negative, transactions_amount_positive, topup_requests_amount_positive
+- [x] migration_lock.toml (postgresql)
+- ⚠️ Migration belum di-apply ke database live — butuh Supabase DATABASE_URL (env placeholder localhost saat ini)
+
+### Repository Layer (interface only)
+
+- [x] src/server/wallet/wallet.repository.ts
+- [x] src/server/transactions/transaction.repository.ts
+- [x] src/server/topup/topup-request.repository.ts
+- [x] src/server/idempotency/idempotency-key.repository.ts
+- [x] src/server/webhooks/webhook-event.repository.ts
+- [x] Arsitektur Route → Service → Repository → Prisma (service belum dibuat — Milestone 2)
+
+### Verification
+
+- [x] prisma validate / format: ✅
+- [x] prisma generate: ✅
+- [x] tsc --noEmit: ✅
+- [x] npm run lint: ✅ 0 errors, 0 warnings
+- [x] npm run build: ✅ success
+
+### Self Review (audit)
+
+- [x] Tidak ada duplicate model
+- [x] Tidak ada missing index (semua query path ter-index)
+- [x] Tidak ada circular relation
+- [x] Tidak ada nullable yang seharusnya required (expiresAt → required di self review)
+- [x] Tidak ada relation ambigu (Transaction ↔ TopupRequest 1:1 via transactionId unique)
+- [x] Tidak ada enum yang tidak terpakai (semua 8 enum ter-referensi)
+- [x] userId di Transaction/TopupRequest sengaja denormalized (audit immutable, tanpa FK) — sesuai Design Review §10
+
+### Next Milestone (belum dikerjakan)
+
+- M2: Repository implementations (Prisma) + IdempotencyService + WalletService
+- M3: TopupService + PaymentService + MockProvider
+- M4: API Routes /api/v1 + UI
 
 ---
 
