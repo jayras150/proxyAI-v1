@@ -1,6 +1,7 @@
 // ProxyAI — Prisma Schema v1
 // Blueprint Reference: Sprint 8 — Database Design
 // Wallet Foundation: Sprint 4 §19-26, Design Review Wallet v1 (approved)
+// Billing Foundation: Billing Design Review v2 + ADR-0001 (approved)
 
 generator client {
   provider = "prisma-client-js"
@@ -41,6 +42,7 @@ enum WalletStatus {
   ACTIVE
   LOCKED
   SUSPENDED
+  PAYMENT_REQUIRED // system-generated (ADR-0001): balance < 0 after settle
 }
 
 enum TransactionType {
@@ -80,6 +82,27 @@ enum WebhookEventStatus {
   RECEIVED
   PROCESSED
   FAILED
+}
+
+enum UsageStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum RefundStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum PricingVersionStatus {
+  ACTIVE
+  ARCHIVED
 }
 
 // ─── Core Models ────────────────────────────────────────────────────────
@@ -146,7 +169,7 @@ model Wallet {
   balance  Decimal      @default(0) @db.Decimal(18, 6)
   currency Currency     @default(USD)
   status   WalletStatus @default(ACTIVE)
-  version  Int          @default(1) // optimistic locking (future)
+  version  Int          @default(1) // optimistic locking
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   transactions  Transaction[]
@@ -179,8 +202,9 @@ model Transaction {
   ipAddress         String?
   userAgent         String?
 
-  wallet       Wallet        @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  topupRequest TopupRequest?
+  wallet        Wallet         @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  topupRequest  TopupRequest?
+  refundRequest RefundRequest?
 
   createdAt DateTime @default(now())
 
@@ -248,35 +272,99 @@ model WebhookEvent {
   @@map("webhook_events")
 }
 
-// ─── Usage / Audit / AI Config ──────────────────────────────────────────
+// ─── Billing Domain ─────────────────────────────────────────────────────
+
+model PricingVersion {
+  id            String               @id @default(uuid())
+  modelId       String
+  version       Int
+  inputPrice    Decimal              @db.Decimal(10, 6) // per 1M tokens
+  outputPrice   Decimal              @db.Decimal(10, 6) // per 1M tokens
+  markupPercent Decimal              @default(0) @db.Decimal(5, 2)
+  serviceFee    Decimal              @default(0) @db.Decimal(18, 6)
+  effectiveFrom DateTime
+  effectiveTo   DateTime?
+  status        PricingVersionStatus @default(ACTIVE)
+
+  aiModel   AiModel    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  usageLogs UsageLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([modelId, version])
+  @@index([modelId, status])
+  @@map("pricing_versions")
+}
 
 model UsageLog {
-  id               String  @id @default(uuid())
+  id               String      @id @default(uuid())
   userId           String
   apiKeyId         String?
   provider         String
   model            String
   promptTokens     Int
   completionTokens Int
+  cachedTokens     Int         @default(0)
   totalTokens      Int
-  providerCost     Decimal @db.Decimal(18, 10)
-  userCost         Decimal @db.Decimal(18, 6)
+  providerCost     Decimal     @db.Decimal(18, 10) // internal — never exposed
+  userCost         Decimal     @db.Decimal(18, 6)
+  currency         Currency    @default(USD)
   latencyMs        Int?
-  status           String
+  status           UsageStatus @default(PENDING)
   requestId        String?
 
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  aiModel AiModel? @relation(fields: [modelId], references: [id])
+  // Pricing snapshot (immutable audit — Billing Design Review v2 R2)
+  pricingVersionId String?
+  inputPrice       Decimal? @db.Decimal(10, 6)
+  outputPrice      Decimal? @db.Decimal(10, 6)
+  markupPercent    Decimal? @db.Decimal(5, 2)
+  serviceFee       Decimal? @db.Decimal(18, 6)
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiModel        AiModel?        @relation(fields: [modelId], references: [id])
+  pricingVersion PricingVersion? @relation(fields: [pricingVersionId], references: [id])
+  refundRequests RefundRequest[]
 
   modelId String?
 
   createdAt DateTime @default(now())
 
-  @@index([userId])
-  @@index([createdAt])
   @@index([userId, createdAt])
+  @@index([requestId])
+  @@index([pricingVersionId])
   @@map("usage_logs")
 }
+
+model RefundRequest {
+  id              String       @id @default(uuid())
+  userId          String
+  usageLogId      String
+  amount          Decimal      @db.Decimal(18, 6)
+  currency        Currency     @default(USD)
+  status          RefundStatus @default(REQUESTED)
+  reason          String?
+  requestedBy     String // 'user:<id>' | 'admin:<id>' | 'system'
+  approvedBy      String?
+  rejectedBy      String?
+  rejectionReason String?
+  transactionId   String?      @unique
+  requestId       String?
+  ipAddress       String?
+  userAgent       String?
+
+  usageLog    UsageLog     @relation(fields: [usageLogId], references: [id], onDelete: Restrict)
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([usageLogId])
+  @@index([userId, status])
+  @@map("refund_requests")
+}
+
+// ─── Audit / AI Config ──────────────────────────────────────────────────
 
 model AuditLog {
   id          String  @id @default(uuid())
@@ -302,12 +390,11 @@ model AiModel {
   provider      String
   modelId       String  @unique
   contextWindow Int
-  inputPrice    Decimal @db.Decimal(10, 6)
-  outputPrice   Decimal @db.Decimal(10, 6)
   enabled       Boolean @default(true)
   capabilities  Json?
 
-  usageLogs UsageLog[]
+  pricingVersions PricingVersion[]
+  usageLogs       UsageLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

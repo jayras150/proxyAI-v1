@@ -2,17 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `09aaec0` — fix(wallet): protect against expired payments and key rate limits by user
+Commit: `543bd04` — docs: lock billing engine design as approved for implementation
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 45%
+Completion: 48%
 
 Current Phase:
-- Wallet Module — OFFICIALLY CLOSED ✅
-- Next Module: Billing Engine
+- Billing Engine — Milestone 1 (Database Foundation & Domain Model)
 
 ---
 
@@ -20,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (design locked — implementasi Milestone 1 berikutnya)
+3. 🔄 Build Billing Engine (M1 ✅, design locked — M2 berikutnya)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -437,6 +436,63 @@ Design terkunci — tidak akan diubah sebelum implementasi dimulai.
 
 ---
 
+## Billing Engine — Milestone 1: Database Foundation & Domain Model (2026-07-31)
+
+### Database Schema
+
+- [x] `enum WalletStatus` + `PAYMENT_REQUIRED` (system-generated, ADR-0001)
+- [x] `enum UsageStatus` { PENDING, COMPLETED, FAILED, REFUNDED }
+- [x] `enum RefundStatus` { REQUESTED, APPROVED, REJECTED, COMPLETED, FAILED, CANCELLED }
+- [x] `enum PricingVersionStatus` { ACTIVE, ARCHIVED }
+- [x] `PricingVersion` (modelId, version, inputPrice, outputPrice, markupPercent, serviceFee, effectiveFrom/To, status) — unique [modelId, version], index [modelId, status]
+- [x] `UsageLog` diperbarui: status → enum, +cachedTokens, +currency, +pricingVersionId, +pricing snapshot (inputPrice, outputPrice, markupPercent, serviceFee), index [requestId] & [pricingVersionId]
+- [x] `RefundRequest` (userId, usageLogId unique, amount, currency, status, requestedBy/approvedBy/rejectedBy, transactionId unique, audit fields) — FK usageLog Restrict
+- [x] `AiModel` — price fields dipindah ke PricingVersion (tidak ada kode yang memakai field lama — verified)
+- [x] `Transaction` — relasi refundRequest 1:1 (transactionId unique)
+
+### Migration
+
+- [x] `prisma/migrations/20260731190000_billing_foundation/migration.sql` — increment diff dari schema Wallet (bukan from-empty)
+- [x] DROP CONSTRAINT `wallets_balance_non_negative` (ADR-0001: business policy, bukan DB integrity — env WALLET_MAX_NEGATIVE_BALANCE)
+- [x] Migration aman untuk upgrade: tidak merusak data existing, enum additive, kolom baru nullable/defaulted
+- ⚠️ Belum di-apply ke DB live (butuh Supabase credentials — prisma migrate deploy saat deploy)
+
+### Value Objects (pure, tanpa dependency database)
+
+- [x] `src/server/billing/token-usage.ts` — TokenUsage (prompt/completion/cached, add merge, validasi non-negatif integer)
+- [x] `src/server/billing/pricing-snapshot.ts` — PricingSnapshot (pricingVersionId, input/output price, markup, serviceFee, currency guard, toPersistence)
+- [x] `src/server/billing/cost-breakdown.ts` — CostBreakdown (providerCost + userCost, currency guard)
+- [x] Money (existing, reuse)
+
+### Repository Interfaces (interface only)
+
+- [x] `src/server/pricing/pricing.repository.ts` — findActiveByModelId, findById, findByModelId, create, archive
+- [x] `src/server/usage/usage.repository.ts` — create, findById, findByRequestId, findByUserIdPaginated, updateStatus, markRefunded
+- [x] `src/server/refund/refund.repository.ts` — create, findById, findByUsageLogId, findByUserIdPaginated, updateStatus (optimistic version), markCompleted
+- [x] `src/server/transactions/transaction.repository.ts` — review: type pagination digeneralisasi (Cursor/Page di src/server/db/pagination.ts)
+- [x] Arsitektur Route → Service → Repository → Prisma dipertahankan
+
+### Validation Review
+
+- [x] Unique: [modelId, version] pricing, [usageLogId] refund, [transactionId] refund, reference transaction
+- [x] FK: pricing→aiModel (Cascade), usage→pricingVersion (SetNull), refund→usageLog (Restrict), refund→transaction (SetNull)
+- [x] Optimistic locking: RefundRequest.updateStatus dengan expectedVersion
+- [x] Decimal precision: price (10,6), money (18,6), providerCost (18,10), markup (5,2), serviceFee (18,6)
+- [x] Audit field: createdAt/updatedAt lengkap; immutable UsageLog & Transaction (tanpa update path kecuali status)
+- [x] Soft delete: tidak dipakai (financial records immutable)
+
+### Verification
+
+- [x] prisma validate / format: ✅
+- [x] prisma generate: ✅
+- [x] tsc --noEmit: ✅
+- [x] npm run lint: ✅ 0 errors, 0 warnings
+- [x] npm run build: ✅
+- [x] npm test: ✅ 104 passed (11 baru: token-usage 4, pricing-snapshot 4, cost-breakdown 3)
+- [x] Tidak ada konflik dengan Wallet (semua test Wallet tetap lulus)
+
+---
+
 # In Progress
 
 ## Authentication
@@ -452,7 +508,7 @@ Status:
 Billing
 
 Status:
-📘 Design APPROVED FOR IMPLEMENTATION (locked 2026-07-31) — implementasi belum dimulai
+🟡 Milestone 1 COMPLETED (Database Foundation & Domain Model) — M2 Pricing Engine berikutnya
 
 Dashboard
 
@@ -463,9 +519,9 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 1 (Pricing Engine)** — implementasi berikutnya.
+**Billing Engine — Milestone 2 (Pricing Engine)** — implementasi berikutnya.
 
-Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance.
+Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance. M1 (schema, migration, value objects, repository interfaces) selesai 2026-07-31.
 
 Expected Deliverables (saat implementasi nanti)
 

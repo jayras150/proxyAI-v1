@@ -4,18 +4,12 @@
 // strings at the API layer (never JS numbers).
 
 import type { Transaction, TransactionType, TransactionStatus, Currency, Prisma } from '@prisma/client'
+import type { Cursor, Page } from '@/server/db/pagination'
 
 /** Cursor for keyset pagination over transactions. */
-export interface TransactionCursor {
-  createdAt: Date
-  id: string
-}
+export type TransactionCursor = Cursor
 
-export interface TransactionPage {
-  items: Transaction[]
-  nextCursor: TransactionCursor | null
-  hasMore: boolean
-}
+export type TransactionPage = Page<Transaction>
 
 export interface TransactionCreateInput {
   walletId: string

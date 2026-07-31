@@ -191,13 +191,24 @@ Status: 📘 **APPROVED FOR IMPLEMENTATION** (locked 2026-07-31)
 
 Keputusan kunci: post-paid debit (A), tanpa reserve V1, PricingVersion table, negative balance via env policy (bukan CHECK), PAYMENT_REQUIRED system-only.
 
-### Implementasi — belum dimulai
+### Implementasi — Milestone 1: Database Foundation & Domain Model
 
-Status: 🔴 Not Started — Milestone 1 (Pricing Engine) menunggu instruksi
+Status: ✅ **COMPLETED** (2026-07-31) — 104 tests, lint, build, prisma validate/generate passed
+
+- [x] Schema: PricingVersion, RefundRequest, UsageLog (status enum + snapshot + currency + cachedTokens), AiModel (price → PricingVersion), Transaction (refundRequest 1:1), WalletStatus.PAYMENT_REQUIRED
+- [x] Enums: UsageStatus, RefundStatus, PricingVersionStatus, WalletStatus+PAYMENT_REQUIRED
+- [x] Value objects (pure): TokenUsage, PricingSnapshot, CostBreakdown (+ Money reuse)
+- [x] Repository interfaces: PricingRepository, UsageRepository, RefundRepository (+ TransactionRepository review, pagination generic)
+- [x] Migration 20260731190000_billing_foundation (increment diff) + DROP CHECK wallets_balance_non_negative (ADR-0001)
+- [x] Unit tests: 11 baru (billing domain) — total 104
+
+### Implementasi — Milestone 2: Pricing Engine
+
+Status: 🔴 Not Started — menunggu instruksi
 
 Tasks (saat implementasi nanti):
-- [ ] M1: PricingEngine (pure) — estimate/final, markup, min charge, rounding
-- [ ] M2: Usage Metering + UsageLogRepository + UsageStatus enum
+- [ ] PricingEngine (pure) — estimate/final, markup, min charge, rounding
+- [ ] Usage Metering service
 - [ ] M3: ChargeService + RefundService (1 DB tx, idempotency billing:usage)
 - [ ] M4: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
 - [ ] M5: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
