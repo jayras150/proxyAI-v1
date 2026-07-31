@@ -8,6 +8,7 @@ import { logger } from '@/lib/logger'
 import { canonicalJsonHash } from '@/lib/crypto'
 import type { IdempotencyKeyRepository } from './idempotency-key.repository'
 import type { Prisma } from '@prisma/client'
+import type { TxClient } from '@/server/db/transaction-manager'
 
 export class IdempotencyError extends Error {
   code: string
@@ -56,18 +57,29 @@ export class IdempotencyService {
    * - Existing key still PENDING → IdempotencyError(IN_PROGRESS) (concurrent duplicate).
    */
   async reserve(input: ReserveInput): Promise<ReserveResult> {
+    return this.reserveInTransaction(undefined, input)
+  }
+
+  /**
+   * reserve() inside the caller's transaction — the reservation rolls back
+   * with the transaction, so a failed settlement never blocks retries.
+   */
+  async reserveInTransaction(tx: TxClient | undefined, input: ReserveInput): Promise<ReserveResult> {
     const now = new Date()
     const requestHash = this.requestHash(input.request)
-    const existing = await this.repository.findActive(input.key, input.scope, input.userId, now)
+    const existing = await this.repository.findActive(input.key, input.scope, input.userId, now, tx)
 
     if (!existing) {
-      const record = await this.repository.create({
-        key: input.key,
-        scope: input.scope,
-        userId: input.userId,
-        requestHash,
-        expiresAt: new Date(now.getTime() + (input.ttlMs ?? DEFAULT_TTL_MS)),
-      })
+      const record = await this.repository.create(
+        {
+          key: input.key,
+          scope: input.scope,
+          userId: input.userId,
+          requestHash,
+          expiresAt: new Date(now.getTime() + (input.ttlMs ?? DEFAULT_TTL_MS)),
+        },
+        tx
+      )
       logger.info('idempotency.reserved', {
         key: input.key,
         scope: input.scope,
@@ -100,7 +112,12 @@ export class IdempotencyService {
 
   /** Mark a reserved key COMPLETED and store the response for replay. */
   async complete(id: string, response: unknown): Promise<void> {
-    await this.repository.complete(id, response as Prisma.InputJsonValue)
+    await this.completeInTransaction(undefined, id, response)
+  }
+
+  /** complete() inside the caller's transaction (settlement atomicity). */
+  async completeInTransaction(tx: TxClient | undefined, id: string, response: unknown): Promise<void> {
+    await this.repository.complete(id, response as Prisma.InputJsonValue, tx)
     logger.info('idempotency.completed', { idempotency_id: id })
   }
 

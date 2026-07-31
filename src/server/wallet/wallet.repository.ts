@@ -34,6 +34,18 @@ export interface WalletRepository {
    */
   debitIfSufficient(id: string, amount: Prisma.Decimal, tx?: Prisma.TransactionClient): Promise<Wallet | null>
 
+  /**
+   * Atomic conditional debit with a negative-balance floor (ADR-0001):
+   * succeeds when balance >= amount - floor (i.e. balance - amount >= -floor).
+   * Returns the updated wallet, or null when even the floor is exceeded.
+   */
+  debitWithFloor(
+    id: string,
+    amount: Prisma.Decimal,
+    floor: Prisma.Decimal,
+    tx?: Prisma.TransactionClient
+  ): Promise<Wallet | null>
+
   /** Update wallet status (ACTIVE / LOCKED / SUSPENDED). */
   updateStatus(id: string, status: WalletStatus, tx?: Prisma.TransactionClient): Promise<Wallet>
 }

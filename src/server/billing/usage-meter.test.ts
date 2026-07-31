@@ -54,8 +54,16 @@ describe('UsageMeter — DeepSeek usage', () => {
   })
 
   it('falls back to legacy prompt_cache_hit_tokens when details are absent', () => {
-    const legacy = { ...deepSeekRaw }
-    delete legacy.prompt_tokens_details
+    const legacy = {
+      prompt_tokens: deepSeekRaw.prompt_tokens,
+      completion_tokens: deepSeekRaw.completion_tokens,
+      total_tokens: deepSeekRaw.total_tokens,
+      prompt_cache_hit_tokens: deepSeekRaw.prompt_cache_hit_tokens,
+      prompt_cache_miss_tokens: deepSeekRaw.prompt_cache_miss_tokens,
+      completion_tokens_details: deepSeekRaw.completion_tokens_details,
+      model: deepSeekRaw.model,
+      provider: deepSeekRaw.provider,
+    }
     const usage = meter.parse('deepseek', legacy)
     expect(usage.promptTokens).toBe(51)
     expect(usage.cachedTokens).toBe(15)

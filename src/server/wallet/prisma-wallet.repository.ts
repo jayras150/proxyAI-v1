@@ -68,6 +68,33 @@ export class PrismaWalletRepository implements WalletRepository {
     return client.wallet.findUnique({ where: { id } })
   }
 
+  async debitWithFloor(
+    id: string,
+    amount: Prisma.Decimal,
+    floor: Prisma.Decimal,
+    tx?: Prisma.TransactionClient
+  ): Promise<Wallet | null> {
+    const client = tx ?? prisma
+
+    // Atomic conditional update: succeeds when balance >= amount - floor
+    // (post-debit balance may go negative, but never below -floor).
+    // count === 0 means the floor would be exceeded (or wallet not found).
+    const result = await client.wallet.updateMany({
+      where: {
+        id,
+        balance: { gte: amount.minus(floor) },
+      },
+      data: {
+        balance: { decrement: amount },
+        version: { increment: 1 },
+      },
+    })
+
+    if (result.count === 0) return null
+
+    return client.wallet.findUnique({ where: { id } })
+  }
+
   async updateStatus(id: string, status: WalletStatus, tx?: Prisma.TransactionClient): Promise<Wallet> {
     const client = tx ?? prisma
     return client.wallet.update({

@@ -84,6 +84,13 @@ export class WalletService {
     // Atomic increment (row-level, inside tx).
     const updated = await this.walletRepository.credit(wallet.id, moneyToPrisma(money), tx)
 
+    // ADR-0001: a wallet flagged PAYMENT_REQUIRED (balance < 0 after a
+    // settlement) is reactivated automatically once the balance is >= 0.
+    let active = updated
+    if (wallet.status === 'PAYMENT_REQUIRED' && updated.balance.greaterThanOrEqualTo(0)) {
+      active = await this.walletRepository.updateStatus(wallet.id, 'ACTIVE', tx)
+    }
+
     const transaction = await this.transactionRepository.create(
       {
         walletId: updated.id,
@@ -104,7 +111,7 @@ export class WalletService {
       tx
     )
 
-    return { wallet: updated, transaction }
+    return { wallet: active, transaction }
   }
 
   /**
@@ -199,6 +206,103 @@ export class WalletService {
         'Wallet balance is insufficient.'
       )
     }
+  }
+
+  /**
+   * Atomic conditional debit with a negative-balance floor (ADR-0001).
+   * Opens its own DB transaction; emits wallet.debited AFTER commit.
+   * For composition (settlement), use debitWithFloorInTransaction().
+   */
+  async debitWithFloor(
+    userId: string,
+    money: Money,
+    floor: Money,
+    options: WalletOperationOptions
+  ): Promise<Transaction> {
+    const result = await this.transactionManager.withTransaction((tx) =>
+      this.debitWithFloorInTransaction(tx, userId, money, floor, options)
+    )
+    this.emitAfterCommit('wallet.debited', userId, result, options)
+    return result.transaction
+  }
+
+  /**
+   * Core floor-debit logic — runs inside the CALLER's transaction (tx).
+   * Does NOT emit events (the caller owns the commit boundary).
+   */
+  async debitWithFloorInTransaction(
+    tx: TxClient,
+    userId: string,
+    money: Money,
+    floor: Money,
+    options: WalletOperationOptions
+  ): Promise<CreditDebitResult> {
+    this.assertPositive(money)
+    if (floor.isNegative()) {
+      throw new WalletError(
+        WalletErrorCode.INVALID_AMOUNT,
+        'Negative-balance floor must be non-negative.'
+      )
+    }
+
+    const wallet = await this.walletRepository.findByUserId(userId)
+    if (!wallet) {
+      throw new WalletError(WalletErrorCode.WALLET_NOT_FOUND, 'Wallet not found.')
+    }
+    if (wallet.status === 'SUSPENDED') {
+      throw new WalletError(WalletErrorCode.WALLET_SUSPENDED, 'Wallet is suspended.')
+    }
+    if (wallet.status === 'LOCKED') {
+      throw new WalletError(WalletErrorCode.WALLET_LOCKED, 'Wallet is locked.')
+    }
+    this.assertCurrency(wallet, money)
+    this.assertCurrency(wallet, floor)
+
+    // Atomic conditional decrement with floor: null when the post-debit
+    // balance would fall below -floor.
+    const updated = await this.walletRepository.debitWithFloor(
+      wallet.id,
+      moneyToPrisma(money),
+      moneyToPrisma(floor),
+      tx
+    )
+    if (!updated) {
+      throw new WalletError(
+        WalletErrorCode.INSUFFICIENT_BALANCE,
+        'Wallet balance is insufficient (negative-balance floor would be exceeded).'
+      )
+    }
+
+    const transaction = await this.transactionRepository.create(
+      {
+        walletId: updated.id,
+        userId,
+        amount: moneyToPrisma(money),
+        balanceBefore: updated.balance.plus(moneyToPrisma(money)),
+        balanceAfter: updated.balance,
+        currency: wallet.currency,
+        type: options.type,
+        reference: options.reference,
+        description: options.description,
+        requestId: options.requestId,
+        providerReference: options.providerReference,
+        createdBy: options.createdBy,
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+      },
+      tx
+    )
+
+    return { wallet: updated, transaction }
+  }
+
+  /** Update a wallet's status inside the caller's transaction (e.g. PAYMENT_REQUIRED). */
+  async updateStatusInTransaction(
+    tx: TxClient,
+    walletId: string,
+    status: Wallet['status']
+  ): Promise<Wallet> {
+    return this.walletRepository.updateStatus(walletId, status, tx)
   }
 
   private emitAfterCommit(

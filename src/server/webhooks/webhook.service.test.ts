@@ -56,6 +56,12 @@ class FakeWalletRepo implements WalletRepository {
     this.wallets.set(id, { ...w, balance: w.balance.minus(amount), version: w.version + 1 })
     return this.wallets.get(id)!
   }
+  async debitWithFloor(id: string, amount: Prisma.Decimal, floor: Prisma.Decimal) {
+    const w = this.wallets.get(id)!
+    if (w.balance.plus(floor).lessThan(amount)) return null
+    this.wallets.set(id, { ...w, balance: w.balance.minus(amount), version: w.version + 1 })
+    return this.wallets.get(id)!
+  }
   async updateStatus(id: string, status: Wallet['status']) {
     const w = this.wallets.get(id)!
     this.wallets.set(id, { ...w, status })

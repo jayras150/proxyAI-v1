@@ -14,7 +14,13 @@ export interface IdempotencyKeyCreateInput {
 
 export interface IdempotencyKeyRepository {
   /** Find an existing key within its scope (must not be expired). */
-  findActive(key: string, scope: string, userId: string, now: Date): Promise<IdempotencyKey | null>
+  findActive(
+    key: string,
+    scope: string,
+    userId: string,
+    now: Date,
+    tx?: Prisma.TransactionClient
+  ): Promise<IdempotencyKey | null>
 
   /** Reserve the key (unique constraint guards concurrent duplicates). */
   create(input: IdempotencyKeyCreateInput, tx?: Prisma.TransactionClient): Promise<IdempotencyKey>

@@ -238,18 +238,27 @@ Status: 🟢 COMPLETED
 - [x] Unit tests: 39 baru (total 172) — DeepSeek, OpenAI, cached, tanpa cached, malformed, unsupported, negative, mismatch, deterministic, overflow, null, reasoning, custom adapter
 - [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / purity grep ✅
 
-### Implementasi — Milestone 5: ChargeService (belum dimulai)
+### Implementasi — Milestone 5: Charge Service (COMPLETED 2026-07-31)
+
+Status: 🟢 COMPLETED
+
+- [x] ChargeService (src/server/billing/charge.service.ts) — settlement final post-paid, satu DB transaction (reserve idempotency + debitWithFloor + Transaction AI_USAGE + UsageLog + idempotency result), events hanya setelah commit
+- [x] ADR-0001: WalletRepository.debitWithFloor + WalletService.debitWithFloor(InTransaction) + PAYMENT_REQUIRED + reaktivasi otomatis di credit
+- [x] Repos baru: PrismaPricingRepository, PrismaUsageRepository; IdempotencyService tx-aware (reserveInTransaction/completeInTransaction)
+- [x] Errors: ChargeError (PRICING_NOT_FOUND, WALLET_NOT_FOUND, FLOOR_EXCEEDED, CURRENCY_MISMATCH, CHARGE_FAILED) + map WalletError
+- [x] Unit + integration tests: 24 baru (total 196) — normal, replay, duplicate, floor aman/terlampaui, PAYMENT_REQUIRED, rollback, optimistic locking, event setelah commit, deterministic, race, chargeRaw+UsageMeter
+- [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / no HTTP / no partial update
+
+### Implementasi — Milestone 6: Provider Gateway (belum dimulai)
 
 Status: 🔴 Not Started — menunggu instruksi (jangan mulai sebelum approval)
 
 Tasks (saat implementasi nanti):
-- [ ] ChargeService (1 DB tx: debit wallet + transaction AI_USAGE + usage log + idempotency billing:usage)
-- [ ] RefundService + RefundRequestRepository impl
-- [ ] M6: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
-- [ ] M7: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
-- [ ] M8: Refund flow + reconciliation
-- [ ] M9: Production Readiness Review + closure
-- [ ] Wallet changes (ADR-0001): DROP CHECK constraint, WalletStatus.PAYMENT_REQUIRED, debitWithFloor, reaktivasi credit
+- [ ] ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
+- [ ] POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
+- [ ] RefundService + RefundRequestRepository impl + refund flow + reconciliation
+- [ ] Production Readiness Review + closure
+- [ ] Wallet changes sisa (ADR-0001): DROP CHECK constraint migration sudah ada di M1, debitWithFloor sudah ada — verifikasi saat deploy
 
 ---
 

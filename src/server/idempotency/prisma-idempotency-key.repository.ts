@@ -6,8 +6,9 @@ import type { Prisma } from '@prisma/client'
 import type { IdempotencyKeyRepository, IdempotencyKeyCreateInput } from './idempotency-key.repository'
 
 export class PrismaIdempotencyKeyRepository implements IdempotencyKeyRepository {
-  async findActive(key: string, scope: string, userId: string, now: Date) {
-    return prisma.idempotencyKey.findFirst({
+  async findActive(key: string, scope: string, userId: string, now: Date, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma
+    return client.idempotencyKey.findFirst({
       where: {
         key,
         scope,

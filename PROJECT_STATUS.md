@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `271cf1d` — feat(billing): add pure usage meter with provider adapters
+Commit: `ac2fefb` — feat(billing): add charge service with atomic settlement
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 54%
+Completion: 55%
 
 Current Phase:
-- Billing Engine — Milestone 4 (Usage Meter) ✅ COMPLETED
+- Billing Engine — Milestone 5 (Charge Service) ✅ COMPLETED
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅ — M5 ChargeService berikutnya, belum dimulai)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅ — M6 berikutnya, belum dimulai)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -644,6 +644,74 @@ total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
 
 > ✅ Milestone 4 COMPLETED.
 
+## Billing Engine — Milestone 5: Charge Service (2026-07-31)
+
+### ChargeService (satu-satunya service yang menyelesaikan billing AI)
+
+- [x] src/server/billing/charge.service.ts — settlement final setelah provider mengembalikan usage (post-paid)
+- [x] Flow: load PricingVersion → PricingSnapshot → PricingEngine.calculate() → SATU DB transaction → emit setelah commit
+- [x] Di dalam satu transaction: idempotency reserve + debitWithFloor + Transaction(AI_USAGE) + UsageLog (snapshot pricing immutable) + idempotency result + status PAYMENT_REQUIRED
+- [x] TIDAK pernah: panggil AI provider, estimate, handle HTTP, jadi API controller (grep-verified: tidak ada fetch/axios/next/route)
+- [x] chargeRaw() — meter raw provider usage via UsageMeter lalu charge (integrasi M4+M5, tested)
+
+### Transaction Review
+
+- [x] Transaction(AI_USAGE) dibuat oleh WalletService di dalam tx yang sama (reference charge_<requestId> unique)
+- [x] balanceBefore/balanceAfter akurat (pre/post debit), audit metadata (requestId, providerReference, createdBy system)
+- [x] Transaction immutable — tidak ada update path
+
+### Atomicity Review
+
+- [x] Semua operasi financial dalam SATU DB transaction (withTransaction): debit gagal → usage log tidak dibuat; usage log gagal → debit di-rollback (tested)
+- [x] Tidak ada partial update: wallet + transaction + usage log + idempotency result all-or-nothing (tested: usage insert failure & duplicate tx reference → full rollback)
+- [x] Idempotency reservation DI DALAM transaction — gagal → key ikut rollback, retry bersih (tidak terkunci 24h)
+
+### Idempotency Review
+
+- [x] Scope billing:usage; reserve → complete dalam satu tx; replay mengembalikan stored result tanpa debit ulang
+- [x] Same key + different payload → KEY_REUSED_WITH_DIFFERENT_REQUEST (tested)
+- [x] Concurrent duplicate → P2002 → re-reserve → replay (jika sudah commit) atau IN_PROGRESS (tested)
+- [x] Replay response deterministik (byte-identical, tested)
+
+### Event Review
+
+- [x] billing.charged + wallet.debited di-emit HANYA setelah commit berhasil (tested: gagal → 0 event; sukses → charged + debited)
+- [x] Replay TIDAK mengirim ulang event
+- [x] Metadata: usageLogId, modelId, pricingVersionId, tokens, walletStatusAfter (domain-event.ts diperluas)
+
+### ADR-0001 (Controlled Negative Balance)
+
+- [x] WalletRepository.debitWithFloor + Prisma impl (atomic: balance >= amount - floor)
+- [x] WalletService.debitWithFloor + debitWithFloorInTransaction (floor Money, non-negative guard, status gate)
+- [x] Balance < 0 setelah settlement → wallet PAYMENT_REQUIRED (dalam tx yang sama)
+- [x] Reaktivasi otomatis: credit yang mengembalikan balance >= 0 → ACTIVE (wallet.service, tested)
+- [x] env WALLET_MAX_NEGATIVE_BALANCE (default 0.10) + custom floor override per-call
+
+### Repository Implementations (baru)
+
+- [x] src/server/pricing/prisma-pricing.repository.ts (findById untuk charge, dsb.)
+- [x] src/server/usage/prisma-usage.repository.ts (create in-tx, pagination, updateStatus, markRefunded)
+- [x] IdempotencyService: reserveInTransaction + completeInTransaction (additive, wallet topup tidak berubah)
+
+### Test Coverage (24 test baru)
+
+- [x] normal charge ✓ / PricingEngine dipakai (cost math exact) ✓
+- [x] idempotency replay (tanpa double debit) ✓ / duplicate request (KEY_REUSED) ✓ / deterministic replay ✓
+- [x] floor masih aman (balance jadi negatif dalam floor → PAYMENT_REQUIRED) ✓
+- [x] floor terlampaui (FLOOR_EXCEEDED, tidak ada yang persist) ✓ / custom floor override ✓
+- [x] PAYMENT_REQUIRED transition ✓ / credit reactivation ✓
+- [x] rollback transaction (usage log gagal / tx reference duplikat → full rollback, 0 event) ✓
+- [x] optimistic locking (version increment) ✓ / race condition (2 parallel charge → apply sekali) ✓ / IN_PROGRESS ✓
+- [x] deterministic result ✓ / chargeRaw + UsageMeter integration ✓ / malformed raw usage ditolak sebelum sentuh wallet ✓
+
+### Verification
+
+- [x] npm test: 196 passed (24 baru)
+- [x] tsc --noEmit ✅ / lint ✅ 0 errors 0 warnings / build ✅
+- [x] Tidak ada partial update / semua financial op satu transaction / events hanya setelah commit (tested)
+
+> ✅ Milestone 5 COMPLETED.
+
 ---
 
 # In Progress
@@ -661,7 +729,7 @@ Status:
 Billing
 
 Status:
-🟢 Milestone 4 COMPLETED (Usage Meter) — M5 ChargeService berikutnya, belum dimulai
+🟢 Milestone 5 COMPLETED (Charge Service) — M6 berikutnya, belum dimulai
 
 Dashboard
 
@@ -672,7 +740,7 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 5 (ChargeService)** — menunggu instruksi (jangan mulai sebelum approval).
+**Billing Engine — Milestone 6** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 
