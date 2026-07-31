@@ -1,6 +1,6 @@
 // ProxyAI — WebhookEventRepository Interface
 // Blueprint Reference: Design Review Wallet §12 — Webhook Replay Protection
-// Milestone 1: interface only.
+// Milestone 1: interface. Milestone 3: Prisma implementation.
 
 import type { WebhookEvent, Prisma, PaymentProvider } from '@prisma/client'
 
@@ -8,7 +8,7 @@ export interface WebhookEventCreateInput {
   provider: PaymentProvider
   providerEventId: string
   payloadHash: string // sha256 of raw body
-  payload?: Prisma.InputJsonValue | null
+  payload?: Prisma.InputJsonValue
 }
 
 export interface WebhookEventRepository {

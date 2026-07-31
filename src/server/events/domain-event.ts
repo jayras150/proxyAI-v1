@@ -7,13 +7,16 @@ export type DomainEventType =
   | 'wallet.credited'
   | 'wallet.debited'
   | 'topup.completed'
+  | 'topup.failed'
   | 'refund.completed'
 
 export interface DomainEventMetadata {
   requestId?: string
+  correlationId?: string
   userId: string
   walletId: string
   transactionId?: string
+  topupId?: string
   provider?: string
   providerReference?: string
   amount?: string // decimal string, never number

@@ -27,6 +27,11 @@ export const env = {
   // DeepInfra
   deepinfraApiKey: envOptional('DEEPINFRA_API_KEY', ''),
 
+  // Payments
+  paymentProvider: envOptional('PAYMENT_PROVIDER', 'mock'),
+  mockPaymentWebhookSecret: envOptional('MOCK_PAYMENT_WEBHOOK_SECRET', 'mock-secret-dev'),
+  topupExpiryMinutes: Number(envOptional('TOPUP_EXPIRY_MINUTES', '30')),
+
   // App
   appUrl: envOptional('NEXT_PUBLIC_APP_URL', 'http://localhost:3000'),
   apiUrl: envOptional('NEXT_PUBLIC_API_URL', 'http://localhost:3000/api'),

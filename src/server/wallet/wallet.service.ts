@@ -10,7 +10,7 @@
 import { Money } from '@/lib/money'
 import { createDomainEvent } from '@/server/events/event-dispatcher'
 import type { EventDispatcher } from '@/server/events/event-dispatcher'
-import type { TransactionManager } from '@/server/db/transaction-manager'
+import type { TransactionManager, TxClient } from '@/server/db/transaction-manager'
 import type { WalletRepository } from './wallet.repository'
 import type { TransactionRepository } from '@/server/transactions/transaction.repository'
 import { WalletError, WalletErrorCode } from './wallet.errors'
@@ -28,9 +28,9 @@ export interface WalletOperationOptions {
   userAgent?: string
 }
 
-export interface WalletBalance {
+interface CreditDebitResult {
   wallet: Wallet
-  balance: Money
+  transaction: Transaction
 }
 
 export class WalletService {
@@ -47,134 +47,128 @@ export class WalletService {
   }
 
   /**
-   * Atomic credit. Runs inside a DB transaction:
-   *  - lock wallet row, increment balance
-   *  - insert immutable Transaction
-   * Emits wallet.credited AFTER commit.
+   * Atomic credit (opens its own DB transaction). Emits wallet.credited
+   * AFTER commit. For composing with other operations in a single
+   * transaction (e.g. webhook processing), use creditInTransaction().
    */
   async credit(userId: string, money: Money, options: WalletOperationOptions): Promise<Transaction> {
-    this.assertPositive(money)
-
-    const result = await this.transactionManager.withTransaction(async (tx) => {
-      const wallet = await this.walletRepository.findByUserId(userId)
-      if (!wallet) {
-        throw new WalletError(WalletErrorCode.WALLET_NOT_FOUND, 'Wallet not found.')
-      }
-      if (wallet.status === 'SUSPENDED') {
-        throw new WalletError(WalletErrorCode.WALLET_SUSPENDED, 'Wallet is suspended.')
-      }
-      this.assertCurrency(wallet, money)
-
-      // Atomic increment (row-level, inside tx).
-      const updated = await this.walletRepository.credit(wallet.id, money.value, tx)
-
-      const transaction = await this.transactionRepository.create(
-        {
-          walletId: updated.id,
-          userId,
-          amount: money.value,
-          balanceBefore: updated.balance.minus(money.value),
-          balanceAfter: updated.balance,
-          currency: wallet.currency,
-          type: options.type,
-          reference: options.reference,
-          description: options.description,
-          requestId: options.requestId,
-          providerReference: options.providerReference,
-          createdBy: options.createdBy,
-          ipAddress: options.ipAddress,
-          userAgent: options.userAgent,
-        },
-        tx
-      )
-
-      return { wallet: updated, transaction }
-    })
-
-    // Emit only after commit succeeded.
-    this.eventDispatcher.emit(
-      createDomainEvent('wallet.credited', {
-        userId,
-        walletId: result.wallet.id,
-        transactionId: result.transaction.id,
-        requestId: options.requestId,
-        providerReference: options.providerReference,
-        amount: money.toString(),
-        currency: money.currency,
-      })
+    const result = await this.transactionManager.withTransaction((tx) =>
+      this.creditInTransaction(tx, userId, money, options)
     )
-
+    this.emitAfterCommit('wallet.credited', userId, result, options)
     return result.transaction
   }
 
   /**
-   * Atomic conditional debit. Runs inside a DB transaction:
-   *  - decrement balance only when balance >= amount (guards overdraw)
-   *  - insert immutable Transaction
-   * Emits wallet.debited AFTER commit. Throws INSUFFICIENT_BALANCE on overdraw.
+   * Core credit logic — runs inside the CALLER's transaction (tx).
+   * Does NOT emit events (the caller owns the commit boundary).
    */
-  async debit(userId: string, money: Money, options: WalletOperationOptions): Promise<Transaction> {
+  async creditInTransaction(
+    tx: TxClient,
+    userId: string,
+    money: Money,
+    options: WalletOperationOptions
+  ): Promise<CreditDebitResult> {
     this.assertPositive(money)
 
-    const result = await this.transactionManager.withTransaction(async (tx) => {
-      const wallet = await this.walletRepository.findByUserId(userId)
-      if (!wallet) {
-        throw new WalletError(WalletErrorCode.WALLET_NOT_FOUND, 'Wallet not found.')
-      }
-      if (wallet.status === 'SUSPENDED') {
-        throw new WalletError(WalletErrorCode.WALLET_SUSPENDED, 'Wallet is suspended.')
-      }
-      if (wallet.status === 'LOCKED') {
-        throw new WalletError(WalletErrorCode.WALLET_LOCKED, 'Wallet is locked.')
-      }
-      this.assertCurrency(wallet, money)
+    const wallet = await this.walletRepository.findByUserId(userId)
+    if (!wallet) {
+      throw new WalletError(WalletErrorCode.WALLET_NOT_FOUND, 'Wallet not found.')
+    }
+    if (wallet.status === 'SUSPENDED') {
+      throw new WalletError(WalletErrorCode.WALLET_SUSPENDED, 'Wallet is suspended.')
+    }
+    this.assertCurrency(wallet, money)
 
-      // Atomic conditional decrement: null when balance < amount.
-      const updated = await this.walletRepository.debitIfSufficient(wallet.id, money.value, tx)
-      if (!updated) {
-        throw new WalletError(
-          WalletErrorCode.INSUFFICIENT_BALANCE,
-          'Wallet balance is insufficient.'
-        )
-      }
+    // Atomic increment (row-level, inside tx).
+    const updated = await this.walletRepository.credit(wallet.id, money.value, tx)
 
-      const transaction = await this.transactionRepository.create(
-        {
-          walletId: updated.id,
-          userId,
-          amount: money.value,
-          balanceBefore: updated.balance.plus(money.value),
-          balanceAfter: updated.balance,
-          currency: wallet.currency,
-          type: options.type,
-          reference: options.reference,
-          description: options.description,
-          requestId: options.requestId,
-          providerReference: options.providerReference,
-          createdBy: options.createdBy,
-          ipAddress: options.ipAddress,
-          userAgent: options.userAgent,
-        },
-        tx
-      )
-
-      return { wallet: updated, transaction }
-    })
-
-    // Emit only after commit succeeded.
-    this.eventDispatcher.emit(
-      createDomainEvent('wallet.debited', {
+    const transaction = await this.transactionRepository.create(
+      {
+        walletId: updated.id,
         userId,
-        walletId: result.wallet.id,
-        transactionId: result.transaction.id,
+        amount: money.value,
+        balanceBefore: updated.balance.minus(money.value),
+        balanceAfter: updated.balance,
+        currency: wallet.currency,
+        type: options.type,
+        reference: options.reference,
+        description: options.description,
         requestId: options.requestId,
         providerReference: options.providerReference,
-        amount: money.toString(),
-        currency: money.currency,
-      })
+        createdBy: options.createdBy,
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+      },
+      tx
     )
 
+    return { wallet: updated, transaction }
+  }
+
+  /**
+   * Atomic conditional debit (opens its own DB transaction). Emits
+   * wallet.debited AFTER commit. For composition, use debitInTransaction().
+   */
+  async debit(userId: string, money: Money, options: WalletOperationOptions): Promise<Transaction> {
+    const result = await this.transactionManager.withTransaction((tx) =>
+      this.debitInTransaction(tx, userId, money, options)
+    )
+    this.emitAfterCommit('wallet.debited', userId, result, options)
     return result.transaction
+  }
+
+  /** Core debit logic — runs inside the CALLER's transaction (tx). */
+  async debitInTransaction(
+    tx: TxClient,
+    userId: string,
+    money: Money,
+    options: WalletOperationOptions
+  ): Promise<CreditDebitResult> {
+    this.assertPositive(money)
+
+    const wallet = await this.walletRepository.findByUserId(userId)
+    if (!wallet) {
+      throw new WalletError(WalletErrorCode.WALLET_NOT_FOUND, 'Wallet not found.')
+    }
+    if (wallet.status === 'SUSPENDED') {
+      throw new WalletError(WalletErrorCode.WALLET_SUSPENDED, 'Wallet is suspended.')
+    }
+    if (wallet.status === 'LOCKED') {
+      throw new WalletError(WalletErrorCode.WALLET_LOCKED, 'Wallet is locked.')
+    }
+    this.assertCurrency(wallet, money)
+
+    // Atomic conditional decrement: null when balance < amount.
+    const updated = await this.walletRepository.debitIfSufficient(wallet.id, money.value, tx)
+    if (!updated) {
+      throw new WalletError(
+        WalletErrorCode.INSUFFICIENT_BALANCE,
+        'Wallet balance is insufficient.'
+      )
+    }
+
+    const transaction = await this.transactionRepository.create(
+      {
+        walletId: updated.id,
+        userId,
+        amount: money.value,
+        balanceBefore: updated.balance.plus(money.value),
+        balanceAfter: updated.balance,
+        currency: wallet.currency,
+        type: options.type,
+        reference: options.reference,
+        description: options.description,
+        requestId: options.requestId,
+        providerReference: options.providerReference,
+        createdBy: options.createdBy,
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+      },
+      tx
+    )
+
+    return { wallet: updated, transaction }
   }
 
   /**
@@ -200,6 +194,25 @@ export class WalletService {
         'Wallet balance is insufficient.'
       )
     }
+  }
+
+  private emitAfterCommit(
+    type: 'wallet.credited' | 'wallet.debited',
+    userId: string,
+    result: CreditDebitResult,
+    options: WalletOperationOptions
+  ): void {
+    this.eventDispatcher.emit(
+      createDomainEvent(type, {
+        userId,
+        walletId: result.wallet.id,
+        transactionId: result.transaction.id,
+        requestId: options.requestId,
+        providerReference: options.providerReference,
+        amount: result.transaction.amount.toFixed(6),
+        currency: result.transaction.currency,
+      })
+    )
   }
 
   private assertPositive(money: Money): void {

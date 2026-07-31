@@ -109,6 +109,19 @@ Latest commit: `0a783a8` — refactor(auth): consolidate auth helpers and single
 - [x] Unit tests: 34 passed (incl. concurrency: parallel debits tidak overdraw)
 - [x] prisma generate ✅ / tsc ✅ / lint ✅ / build ✅
 
+### Wallet System — Milestone 3: Topup & Payment Services (2026-07-31)
+
+- [x] PaymentProvider abstraction (createPayment/verifyWebhook)
+- [x] MockProvider: payment intent, checkout URL/token, expiresAt, unique ref, webhook simulation, HMAC signature
+- [x] PaymentService: orchestrasi provider + mapping, tanpa business logic wallet
+- [x] TopupService: createTopup/getTopup/markPaid/markFailed/markExpired; wallet tidak berubah saat create
+- [x] IdempotencyService: reserve/complete/replay, hash validation, expired cleanup, scope-aware
+- [x] WebhookService: signature verify, replay protection, payload hash, dedupe, amount/currency check, single tx, events setelah commit
+- [x] Prisma repos: TopupRequest, IdempotencyKey, WebhookEvent
+- [x] WalletService creditInTransaction/debitInTransaction (komposisi satu tx)
+- [x] Unit + integration tests: 64 passed (replay, forged, mismatch, FAILED, concurrency double-credit)
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ / build ✅
+
 ### Technical Debt (R5-R9 + R10)
 
 - [ ] R5 — ms() → lib/time.ts
@@ -153,6 +166,22 @@ Status: 🔴 Not Started
 Tasks:
 - [ ] API Routes /api/v1/wallet/*
 - [ ] Webhook /api/v1/webhooks/payments
+- [ ] UI: balance card, topup form, transaction history
+
+## 📋 In Progress
+
+### Wallet System — Milestone 3: Topup & Payment Services
+
+Status: ✅ COMPLETE (2026-07-31) — 64 tests, lint, build passed
+
+### Wallet System — Milestone 4: API & UI
+
+Status: 🔴 Not Started — menunggu persetujuan setelah M3
+
+Tasks:
+- [ ] API Routes /api/v1/wallet/*
+- [ ] Webhook /api/v1/webhooks/payments
+- [ ] OpenAPI spec validation
 - [ ] UI: balance card, topup form, transaction history
 
 ### Billing Engine

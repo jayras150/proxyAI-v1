@@ -1,14 +1,14 @@
 // ProxyAI — TopupRequestRepository Interface
 // Blueprint Reference: Sprint 14 §106 — Repository Pattern
-// Milestone 1: interface only.
+// Milestone 1: interface. Milestone 3: Prisma implementation.
 
-import type { TopupRequest, Prisma, PaymentProvider, TopupStatus } from '@prisma/client'
+import type { TopupRequest, Prisma, PaymentProvider, TopupStatus, Currency } from '@prisma/client'
 
 export interface TopupRequestCreateInput {
   userId: string
   walletId: string
   amount: Prisma.Decimal
-  currency: string
+  currency: Currency
   provider: PaymentProvider
   expiresAt: Date
 }
@@ -20,8 +20,18 @@ export interface TopupRequestRepository {
   /** Find a top-up request by id (scoped to the owning user). */
   findByIdAndUserId(id: string, userId: string): Promise<TopupRequest | null>
 
+  /** Find a top-up request by id (unscoped — service layer enforces auth). */
+  findById(id: string): Promise<TopupRequest | null>
+
   /** Find by provider reference — used to dedupe webhook deliveries. */
   findByProviderReference(providerReference: string): Promise<TopupRequest | null>
+
+  /** Store the provider reference after the payment intent was created. */
+  updateProviderReference(
+    id: string,
+    providerReference: string,
+    tx?: Prisma.TransactionClient
+  ): Promise<TopupRequest>
 
   /** Atomically transition status; used to prevent double-processing. */
   updateStatus(

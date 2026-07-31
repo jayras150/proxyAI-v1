@@ -8,17 +8,17 @@ Commit: `0a783a8` — refactor(auth): consolidate auth helpers and single sessio
 
 Project Status: 🚧 In Development
 
-Completion: 33%
+Completion: 37%
 
 Current Phase:
-- Wallet System — Milestone 2 (Wallet Core: services, atomic ops, events)
+- Wallet System — Milestone 3 (Topup & Payment Services)
 
 ---
 
 # Current Objectives
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
-2. 🔄 Build Wallet System (M1 ✅, M2 ✅, M3+ pending)
+2. 🔄 Build Wallet System (M1 ✅, M2 ✅, M3 ✅, M4 pending)
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
@@ -244,6 +244,72 @@ Current Phase:
 
 - M3: TopupService + PaymentService + MockProvider + IdempotencyService impl
 - M4: API Routes /api/v1 + Webhook + UI
+
+## Wallet System — Milestone 3: Topup & Payment Services (2026-07-31)
+
+### Implemented
+
+- [x] PaymentProvider abstraction (src/server/payments/provider.ts) — createPayment() + verifyWebhook() only; wallet/topup tidak tahu implementasi
+- [x] MockProvider (mock-provider.ts) — payment intent, checkout URL/token, expiresAt, unique providerReference, webhook simulation, HMAC-SHA256 signature gen+verify (timing-safe)
+- [x] PaymentService (payment.service.ts) — orchestrasi provider selection, payment intent, webhook verification, mapping ke domain; tanpa business logic wallet
+- [x] TopupService (topup.service.ts) — createTopup/getTopup/markPaid/markFailed/markExpired; wallet tidak berubah saat create
+- [x] IdempotencyService (idempotency.service.ts) — reserve/complete/replay; hash request divalidasi; expired cleanup; 24h TTL; scope-aware
+- [x] WebhookService (webhook.service.ts) — signature verify, replay protection (unique provider+eventId), payload hash, dedupe, amount/currency check, satu transaksi: credit wallet + mark PAID + mark processed, emit event setelah commit
+- [x] Repository impls: PrismaTopupRequestRepository, PrismaIdempotencyKeyRepository, PrismaWebhookEventRepository
+- [x] WalletService refactor: creditInTransaction/debitInTransaction (untuk komposisi dalam satu transaksi, hindari nested tx)
+- [x] crypto helpers: sha256Hex public, canonicalJsonHash, hmacSha256Hex, timingSafeEqualHex
+- [x] Env: PAYMENT_PROVIDER, MOCK_PAYMENT_WEBHOOK_SECRET, TOPUP_EXPIRY_MINUTES
+
+### Topup Flow
+
+```
+POST topup (M4) → validate (amount>0, wallet ACTIVE, currency) →
+  create TopupRequest(PENDING, expiry 30m) → PaymentService.createPayment →
+  store providerReference → return payment intent (checkout URL/token)
+```
+
+### Payment Flow (webhook)
+
+```
+Webhook → PaymentService.verifyWebhook (HMAC signature) →
+  WebhookEvent dedupe (provider+eventId unique) →
+  find TopupRequest by providerReference → validate amount & currency →
+  DB tx: WalletService.creditInTransaction + TopupService.markPaid + markProcessed →
+  emit topup.completed AFTER commit
+```
+
+### Webhook Flow (replay protection)
+
+```
+Delivery #1 → RECEIVED → processed → PROCESSED (+credit sekali)
+Delivery #2 (sama) → duplicate → ack tanpa credit
+Concurrent #2 → unique constraint (P2002) → detect → duplicate/ignored
+Forged (bad HMAC) → INVALID_SIGNATURE → reject
+```
+
+### State Transition (eksplisit)
+
+```
+PENDING → PAID | FAILED | EXPIRED   (satu arah)
+PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
+```
+
+### Domain Events (setelah commit)
+
+- topup.completed: requestId, correlationId, walletId, userId, transactionId, topupId, provider, providerReference, amount, currency
+- topup.failed: sama (tanpa transactionId)
+- wallet.credited (dari WalletService) tetap setelah commit
+
+### Verification
+
+- [x] Unit test 64 passed (money 10, dispatcher 5, wallet 13, transaction 6, mock-provider 7, topup 9, idempotency 5, webhook 9)
+- [x] Integration: full payment flow, replay, forged signature, amount/currency mismatch, FAILED status, unknown reference
+- [x] Concurrency: 2 parallel deliveries → tepat 1 credit (snapshot rollback tx manager)
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ 0/0 / build ✅
+
+### Next Milestone (belum dikerjakan)
+
+- M4: API Routes /api/v1 + Webhook endpoint + UI (balance card, topup form, transaction history)
 
 ---
 
