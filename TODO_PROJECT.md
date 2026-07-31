@@ -2,7 +2,7 @@
 
 Last Updated: 2026-07-31
 
-Latest commit: `f22a17a` — feat(auth): implement secure authentication module
+Latest commit: `d2020b8` — docs: update project status after final verification
 
 ---
 
@@ -53,6 +53,17 @@ Latest commit: `f22a17a` — feat(auth): implement secure authentication module
 - [x] P2: Fixed all lint/TypeScript errors
 - [x] P2: npm run lint + npm run build pass with no errors
 
+### Blueprint Compliance — request_id, Rate Limiting, Security Headers (2026-07-31)
+
+- [x] request_id di seluruh response (§59): src/lib/request-id.ts + src/lib/api-response.ts (jsonSuccess/jsonError + header X-Request-Id)
+- [x] Semua 9 route refactored ke helper baru; types/api.ts dihapus
+- [x] Rate limiter abstraction (§67): interface RateLimiter + MemoryRateLimiter (dev) + RedisRateLimiter (prod, Upstash)
+- [x] Factory berbasis env (RATE_LIMITER_DRIVER) — business logic tidak terikat implementasi
+- [x] Policy: authPublic 60 req/min, authenticated 300 req/min; headers X-RateLimit-* + Retry-After; kode RATE_LIMITED
+- [x] Security headers (§38): CSP, nosniff, X-Frame-Options DENY, Referrer-Policy, Permissions-Policy, HSTS (prod only)
+- [x] Diverifikasi live: 429 muncul setelah 60 request; semua header hadir
+- [x] npm run lint: ✅ 0 errors / npm run build: ✅ / prisma generate: ✅
+
 ### Final Verification (2026-07-31 — passed)
 
 - [x] Source code verified directly (HttpOnly cookies, hashToken, logout-scope, /me, /logout-all)
@@ -66,16 +77,11 @@ Latest commit: `f22a17a` — feat(auth): implement secure authentication module
 
 ---
 
-## 🟡 In Progress
+## ✅ Completed Tasks
 
-### Authentication Module — Remaining Blueprint Compliance
+### Authentication Module — Fully Blueprint Compliant
 
-Status: Core complete, blueprint gaps remain — NOT marked fully complete
-
-- [ ] request_id wired into standard response contract (Blueprint §59)
-- [ ] Rate limiting for auth endpoints (Blueprint §67)
-- [ ] Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy (Blueprint §38)
-- [ ] Admin TOTP + approval sessions (Blueprint §36-37) — admin phase
+Status: ✅ COMPLETE (request_id, rate limiting, security headers implemented & verified)
 
 ---
 
@@ -83,7 +89,7 @@ Status: Core complete, blueprint gaps remain — NOT marked fully complete
 
 ### Wallet System
 
-Status: 🔴 Not Started
+Status: 🔴 Not Started — NEXT TASK after auth module is marked complete
 
 Tasks:
 - [ ] Wallet CRUD server service

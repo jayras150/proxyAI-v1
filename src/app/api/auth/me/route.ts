@@ -1,31 +1,37 @@
 // ProxyAI — GET /api/auth/me
 // Returns the authenticated user profile (reads HttpOnly access cookie).
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { verifyAccessToken } from '@/lib/jwt'
-import { successResponse, errorResponse } from '@/types/api'
+import { jsonSuccess, jsonError } from '@/lib/api-response'
 import { getAccessToken } from '@/lib/cookies'
+import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit/helpers'
+import { RATE_LIMITS } from '@/config/rate-limits'
 import type { UserProfile } from '@/types/auth'
 
 export async function GET(request: NextRequest) {
+  // Rate limit: authenticated endpoint, 300 req/min.
+  const rate = await enforceRateLimit(request, RATE_LIMITS.authAuthenticated)
+  if (rate.limited) return rate.response
+
   try {
     const accessToken = getAccessToken(request)
     if (!accessToken) {
-      return NextResponse.json(
-        errorResponse('UNAUTHORIZED', 'Missing or invalid authorization header.'),
-        { status: 401 }
-      )
+      return jsonError('UNAUTHORIZED', 'Missing or invalid authorization header.', {
+        status: 401,
+        headers: rateLimitHeaders(rate.result),
+      })
     }
 
     let payload
     try {
       payload = verifyAccessToken(accessToken)
     } catch {
-      return NextResponse.json(
-        errorResponse('INVALID_TOKEN', 'Access token is invalid or expired.'),
-        { status: 401 }
-      )
+      return jsonError('INVALID_TOKEN', 'Access token is invalid or expired.', {
+        status: 401,
+        headers: rateLimitHeaders(rate.result),
+      })
     }
 
     const user = await prisma.user.findUnique({
@@ -41,10 +47,10 @@ export async function GET(request: NextRequest) {
     })
 
     if (!user || user.status === 'SUSPENDED') {
-      return NextResponse.json(
-        errorResponse('UNAUTHORIZED', 'Account not found or suspended.'),
-        { status: 401 }
-      )
+      return jsonError('UNAUTHORIZED', 'Account not found or suspended.', {
+        status: 401,
+        headers: rateLimitHeaders(rate.result),
+      })
     }
 
     const profile: UserProfile = {
@@ -56,12 +62,9 @@ export async function GET(request: NextRequest) {
       createdAt: user.createdAt.toISOString(),
     }
 
-    return NextResponse.json(successResponse(profile))
+    return jsonSuccess(profile, { headers: rateLimitHeaders(rate.result) })
   } catch (error) {
     console.error('Get me error:', error)
-    return NextResponse.json(
-      errorResponse('INTERNAL_SERVER_ERROR', 'An unexpected error occurred.'),
-      { status: 500 }
-    )
+    return jsonError('INTERNAL_SERVER_ERROR', 'An unexpected error occurred.', { status: 500 })
   }
 }

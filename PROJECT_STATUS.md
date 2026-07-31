@@ -2,22 +2,22 @@
 
 Last Updated: 2026-07-31
 
-Commit: `f22a17a` — feat(auth): implement secure authentication module (pushed to origin/main)
+Commit: `d2020b8` — docs: update project status after final verification
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 22%
+Completion: 25%
 
 Current Phase:
-- Foundation → Authentication (Post-Review Hardening)
+- Authentication — Blueprint Compliance (rate limit, request_id, security headers)
 
 ---
 
 # Current Objectives
 
-1. 🟡 Build Authentication (core done, security hardening in progress)
+1. ✅ Build Authentication (blueprint compliant)
 2. 🔄 Build Wallet System
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
@@ -105,6 +105,37 @@ Current Phase:
 - [x] Pushed to origin/main
 
 
+## Blueprint Compliance Implementation (2026-07-31)
+
+### request_id (§59)
+
+- [x] src/lib/request-id.ts — generateRequestId() (req_<uuid>)
+- [x] src/lib/api-response.ts — jsonSuccess/jsonError: request_id di body + header X-Request-Id
+- [x] Semua 9 route refactored ke helper baru (types/api.ts helper lama dihapus)
+
+### Rate Limiting (§67) — abstraction layer
+
+- [x] src/lib/rate-limit/types.ts — interface RateLimiter { limit(key, limit, windowSeconds) }
+- [x] src/lib/rate-limit/memory-rate-limiter.ts — MemoryRateLimiter (development)
+- [x] src/lib/rate-limit/redis-rate-limiter.ts — RedisRateLimiter (production, Upstash Redis, INCR+EXPIRE)
+- [x] src/lib/rate-limit/index.ts — factory by env (RATE_LIMITER_DRIVER, default redis di production bila UPSTASH ada)
+- [x] src/lib/rate-limit/helpers.ts — getClientIp, buildRateLimitKey, rateLimitHeaders, enforceRateLimit (route-agnostic)
+- [x] src/config/rate-limits.ts — policies: authPublic 60/min, authAuthenticated & apiKeys 300/min
+- [x] Header X-RateLimit-Limit / X-RateLimit-Remaining / Retry-After; error code RATE_LIMITED (429)
+- [x] Verified: 65 requests → 60 processed, 5× 429 dengan headers benar
+
+### Security Headers (§38)
+
+- [x] next.config.ts headers(): CSP, X-Content-Type-Options nosniff, X-Frame-Options DENY, Referrer-Policy strict-origin-when-cross-origin, Permissions-Policy, HSTS (production only)
+- [x] Verified via live curl: semua header hadir di response
+
+### Verification
+
+- [x] npx prisma generate ✅
+- [x] npm run lint: ✅ 0 errors, 0 warnings
+- [x] npm run build: ✅ success (14 routes)
+- [x] Smoke test rate limiter + api-response ✅
+
 ---
 
 # In Progress
@@ -133,12 +164,12 @@ Status:
 
 # Remaining Blueprint Gaps (Authentication scope)
 
-- [ ] request_id in standard response contract (Blueprint §59) — helper exists, not wired into routes
-- [ ] Rate limiting for auth endpoints, 60 req/min anonymous (Blueprint §67)
-- [ ] Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy (Blueprint §38)
+- [x] ~~request_id in standard response contract (Blueprint §59)~~ — DONE via src/lib/api-response.ts
+- [x] ~~Rate limiting for auth endpoints, 60 req/min anonymous (Blueprint §67)~~ — DONE via RateLimiter abstraction
+- [x] ~~Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy (Blueprint §38)~~ — DONE in next.config.ts
 - [ ] Admin TOTP + approval sessions (Blueprint §36-37) — admin phase
 
-These must be resolved before Authentication Module can be marked fully complete.
+Authentication Module is now fully blueprint compliant (except admin TOTP, scoped to admin phase).
 
 ---
 
