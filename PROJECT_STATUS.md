@@ -8,17 +8,17 @@ Commit: `0a783a8` — refactor(auth): consolidate auth helpers and single sessio
 
 Project Status: 🚧 In Development
 
-Completion: 30%
+Completion: 33%
 
 Current Phase:
-- Wallet System — Milestone 1 (Database Foundation)
+- Wallet System — Milestone 2 (Wallet Core: services, atomic ops, events)
 
 ---
 
 # Current Objectives
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
-2. 🔄 Build Wallet System (Milestone 1 done, M2+ pending)
+2. 🔄 Build Wallet System (M1 ✅, M2 ✅, M3+ pending)
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
@@ -203,6 +203,47 @@ Current Phase:
 - M2: Repository implementations (Prisma) + IdempotencyService + WalletService
 - M3: TopupService + PaymentService + MockProvider
 - M4: API Routes /api/v1 + UI
+
+## Wallet System — Milestone 2: Wallet Core (2026-07-31)
+
+### Implemented
+
+- [x] Money Value Object (src/lib/money.ts) — Decimal only, currency-aware, add/subtract/compare, strict positive, string serialization 6dp
+- [x] Structured logger (src/lib/logger.ts) — JSON, no console.log in business code
+- [x] Domain events (src/server/events/) — DomainEvent types (wallet.credited/debited, topup.completed, refund.completed), LocalEventDispatcher, createDomainEvent; emitted ONLY after DB commit; errors in listeners logged not thrown
+- [x] TransactionManager (src/server/db/transaction-manager.ts) — Unit of Work abstraction (Prisma impl), service never touches Prisma
+- [x] PrismaWalletRepository — atomic credit (increment), atomic conditional debitIfSufficient (decrement where balance >= amount), status update, version increment
+- [x] PrismaTransactionRepository — immutable create, keyset pagination (createdAt DESC, id DESC, limit+1 hasMore)
+- [x] WalletService — getWallet, atomic credit, atomic debit, validateBalance; business rules: DB tx, no negative balance, every change → Transaction, currency match, events after commit
+- [x] TransactionService — cursor history (opaque cursor encode/decode, limit clamp 1-100, hasMore/nextCursor)
+- [x] WalletError codes: WALLET_NOT_FOUND, WALLET_SUSPENDED, WALLET_LOCKED, INSUFFICIENT_BALANCE, CURRENCY_MISMATCH, INVALID_AMOUNT
+
+### Business Rules enforced
+
+- [x] Semua operasi finansial dalam DB transaction (withTransaction)
+- [x] Saldo tidak pernah negatif (conditional atomic decrement + CHECK constraint lapis-2)
+- [x] Credit & debit atomic (increment / updateMany where balance >= amount)
+- [x] Setiap perubahan saldo → Transaction immutable (balanceBefore/balanceAfter/audit metadata)
+- [x] Money Decimal, tidak pernah number
+- [x] Currency transaction == currency wallet (CURRENCY_MISMATCH guard)
+- [x] Domain events hanya setelah commit sukses (emit setelah withTransaction resolve)
+
+### Verification
+
+- [x] Unit test: 34 passed (money 10, event-dispatcher 5, wallet.service 13 incl. concurrency, transaction.service 6)
+- [x] Concurrency review: two parallel debits on shared balance → exactly 1 succeeds, balance never negative (tested)
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ 0/0 / build ✅
+
+### Self Review
+
+- [x] Service tidak menyentuh Prisma (hanya repository + TransactionManager)
+- [x] Tidak ada console.log / as any / TODO / FIXME
+- [x] Fix ditemukan via test: decimal.js isPositive(0)=true → strict greaterThan(0); nextCursor null saat hasMore=false
+
+### Next Milestone (belum dikerjakan)
+
+- M3: TopupService + PaymentService + MockProvider + IdempotencyService impl
+- M4: API Routes /api/v1 + Webhook + UI
 
 ---
 

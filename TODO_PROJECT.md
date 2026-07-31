@@ -95,6 +95,20 @@ Latest commit: `0a783a8` — refactor(auth): consolidate auth helpers and single
 - [x] Self review: no duplicate model / missing index / circular relation / ambiguous relation / unused enum; expiresAt → required
 - ⚠️ Migration belum di-apply ke DB live (butuh Supabase credentials) — dijadwalkan saat deploy
 
+### Wallet System — Milestone 2: Wallet Core (2026-07-31)
+
+- [x] Money Value Object (Decimal-only, currency-aware, 6dp string serialization)
+- [x] Structured logger abstraction
+- [x] Domain events: types + LocalEventDispatcher (emit after commit only)
+- [x] TransactionManager (Unit of Work)
+- [x] PrismaWalletRepository: atomic credit / conditional debit / status / version
+- [x] PrismaTransactionRepository: immutable create + keyset pagination
+- [x] WalletService: getWallet, atomic credit, atomic debit, validateBalance
+- [x] TransactionService: cursor history + opaque cursor encode/decode
+- [x] WalletError codes (6 business codes)
+- [x] Unit tests: 34 passed (incl. concurrency: parallel debits tidak overdraw)
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ / build ✅
+
 ### Technical Debt (R5-R9 + R10)
 
 - [ ] R5 — ms() → lib/time.ts
@@ -112,16 +126,31 @@ Status: ✅ COMPLETE
 
 ## 📋 In Progress
 
-### Wallet System — Milestone 2: Repository Implementation & Services
+### Wallet System — Milestone 2: Wallet Core
 
-Status: 🔴 Not Started — menunggu persetujuan setelah M1
+Status: ✅ COMPLETE (2026-07-31) — 34 unit tests, lint, build, prisma generate passed
+
+### Wallet System — Milestone 3: Topup & Payment Services
+
+Status: 🔴 Not Started — menunggu persetujuan setelah M2
+
+## 📋 In Progress
+
+### Wallet System — Milestone 3: Topup & Payment Services
+
+Status: 🔴 Not Started — menunggu persetujuan setelah M2
 
 Tasks:
-- [ ] Repository implementations (Prisma) untuk 5 domain
-- [ ] IdempotencyService (reusable)
-- [ ] WalletService (get, credit, debit, validate-balance)
-- [ ] TransactionService (history cursor)
-- [ ] TopupService + PaymentService + MockProvider
+- [ ] IdempotencyService implementation
+- [ ] TopupService (create request, verify payment)
+- [ ] PaymentService + PaymentProvider interface + MockProvider
+- [ ] WebhookEvent repository implementation
+
+### Wallet System — Milestone 4: API & UI
+
+Status: 🔴 Not Started
+
+Tasks:
 - [ ] API Routes /api/v1/wallet/*
 - [ ] Webhook /api/v1/webhooks/payments
 - [ ] UI: balance card, topup form, transaction history

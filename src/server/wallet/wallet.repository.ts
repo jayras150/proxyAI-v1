@@ -1,9 +1,9 @@
 // ProxyAI — WalletRepository Interface
 // Blueprint Reference: Sprint 14 §106 — Repository Pattern
-// Milestone 1: interface only. Implementation (Prisma) arrives with services.
+// Milestone 1: interface. Milestone 2: Prisma implementation.
 // Route → Service → Repository → Prisma (service never touches Prisma directly)
 
-import type { Wallet, WalletStatus, Prisma } from '@prisma/client'
+import type { Wallet, WalletStatus, Currency, Prisma } from '@prisma/client'
 
 export interface WalletRepository {
   /** Find a wallet by its id. */
@@ -21,7 +21,7 @@ export interface WalletRepository {
    */
   create(
     userId: string,
-    currency: string,
+    currency: Currency,
     tx?: Prisma.TransactionClient
   ): Promise<Wallet>
 

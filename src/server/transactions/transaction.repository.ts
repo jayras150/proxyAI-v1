@@ -1,9 +1,9 @@
 // ProxyAI — TransactionRepository Interface
 // Blueprint Reference: Sprint 14 §106 — Repository Pattern
-// Milestone 1: interface only. Money values are Decimal at the data layer
-// and must be serialized as strings at the API layer (never JS numbers).
+// Money values are Decimal at the data layer and must be serialized as
+// strings at the API layer (never JS numbers).
 
-import type { Transaction, Prisma } from '@prisma/client'
+import type { Transaction, TransactionType, TransactionStatus, Currency, Prisma } from '@prisma/client'
 
 /** Cursor for keyset pagination over transactions. */
 export interface TransactionCursor {
@@ -23,10 +23,10 @@ export interface TransactionCreateInput {
   amount: Prisma.Decimal
   balanceBefore: Prisma.Decimal
   balanceAfter: Prisma.Decimal
-  currency: string
-  type: Transaction['type']
+  currency: Currency
+  type: TransactionType
   reference: string
-  status?: Transaction['status']
+  status?: TransactionStatus
   description?: string | null
   // audit metadata
   requestId?: string | null
