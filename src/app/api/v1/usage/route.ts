@@ -43,15 +43,24 @@ export async function GET(request: NextRequest) {
     }
 
     const { usageRepository } = getApiServices()
-    const decodedCursor = parsed.data.cursor
-      ? (JSON.parse(Buffer.from(parsed.data.cursor, 'base64url').toString('utf8')) as {
-          createdAt: string
-          id: string
-        })
-      : null
+    // Opaque cursor: malformed cursors are treated as "start" (never 500).
+    let decodedCursor: { createdAt: Date; id: string } | null = null
+    if (parsed.data.cursor) {
+      try {
+        const raw = JSON.parse(
+          Buffer.from(parsed.data.cursor, 'base64url').toString('utf8')
+        ) as { createdAt?: string; id?: string }
+        const createdAt = raw.createdAt ? new Date(raw.createdAt) : null
+        if (raw.id && createdAt && !Number.isNaN(createdAt.getTime())) {
+          decodedCursor = { createdAt, id: raw.id }
+        }
+      } catch {
+        decodedCursor = null
+      }
+    }
     const page = await usageRepository.findByUserIdPaginated(
       identity.userId,
-      decodedCursor ? { createdAt: new Date(decodedCursor.createdAt), id: decodedCursor.id } : null,
+      decodedCursor,
       parsed.data.limit ?? 20
     )
 

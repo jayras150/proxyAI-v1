@@ -1065,6 +1065,16 @@ describe('GET /v1/usage and /v1/transactions', () => {
     const response = await routes.usage.GET(makeRequest('http://test/api/v1/usage'))
     expect(response.status).toBe(401)
   })
+
+  it('treats a malformed cursor as start-of-list (200, never 500)', async () => {
+    usageRepo.seedUsage()
+    const response = await routes.usage.GET(
+      makeRequest('http://test/api/v1/usage?cursor=%%%not-base64%%%', { token: signAccessToken() })
+    )
+    expect(response.status).toBe(200)
+    const body = await response.json()
+    expect(body.data.items).toHaveLength(1)
+  })
 })
 
 describe('GET /v1/models, /v1/providers, /v1/health', () => {

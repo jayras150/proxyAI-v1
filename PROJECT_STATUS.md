@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `e0541bd` — feat(billing): add v1 REST API layer over the AI gateway
+Commit: `518dc69` — docs(billing): production readiness review and module closure
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 58%
+Completion: 60%
 
 Current Phase:
-- Billing Engine — Milestone 8 (REST API Layer) ✅ COMPLETED
+- Billing Module — ✅ APPROVED FOR PRODUCTION (CLOSED, 2026-07-31)
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅, M7 ✅, M8 ✅ — M9 berikutnya, belum dimulai)
+3. 🔄 Build Billing Engine (M1-M8 ✅ — MODULE CLOSED: APPROVED FOR PRODUCTION 2026-07-31)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -905,6 +905,113 @@ total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
 
 > ✅ Milestone 8 COMPLETED.
 
+## Billing Engine — Milestone 9: Production Readiness Review (2026-07-31)
+
+### Verdict: ✅ APPROVED FOR PRODUCTION — MODULE CLOSED
+
+Audit menyeluruh (tanpa fitur baru / tanpa perubahan arsitektur). Baseline: 262 tests pass, tsc ✅, lint 0:0 ✅, build ✅, OpenAPI valid ✅.
+
+### Security Review — PASS
+
+- [x] Auth: JWT (HttpOnly cookie / Bearer) + API key pk_live_ (SHA-256 at rest, lookup by hash, lastUsedAt)
+- [x] Authorization: data scoped ke identity.userId; refund ownership (USER_MISMATCH guard); admin-only user_id override (403)
+- [x] Rate limit: per userId/apiKeyId (authenticated), per IP (public health); 429 + headers
+- [x] Replay attack: webhook unique (provider, eventId); charge/refund idempotency keys dengan request hash
+- [x] Input validation: Zod semua body/query · Output validation: mapping terkontrol, raw provider payload TIDAK pernah diekspos (verified)
+- [x] Secret exposure: tidak ada key/secret di log, tidak ada console.log di prod code (grep-verified)
+- [x] Header injection: correlationId/userId JSON-escaped di log; provider metadata via JSON.stringify
+- [x] Mass assignment: Zod strip unknown fields; refund user_id di-gate role
+- [x] OWASP API Top 10 mapping: BOLA (ownership) ✓, Broken Auth ✓, Excessive Data (usage/transactions paginated) ✓, Rate Limit ✓, SSRF (provider URL fixed dari env) ✓, Injection (Zod + parameterized Prisma) ✓, Security Misconfig ✓, Mass Assignment ✓, Logging ✓, CSRF (API-key/bearer) ✓
+- [ ] P3 (accepted): x-forwarded-for spoofable — hanya memengaruhi /v1/health (public); authenticated endpoint keyed userId/apiKeyId. Aman di belakang Vercel edge.
+- [ ] P3 (accepted): tidak ada explicit body-size limit di route (platform default berlaku)
+
+### Financial Review — PASS
+
+- [x] Atomicity: charge & refund satu DB transaction (reserve idempotency + debit/credit + UsageLog/RefundRequest + complete)
+- [x] Double charge/refund: dicegah (idempotency + unique usageLogId + status guards) — tested
+- [x] Negative balance: controlled via debitWithFloor (balance >= amount - floor) — tested
+- [x] PAYMENT_REQUIRED flow: set saat balance < 0, gate di estimate, reaktivasi via credit — tested
+- [x] Rollback: usage insert fail / markRefunded fail / tx reference duplikat → full rollback — tested
+- [x] Optimistic locking: RefundRequest.version guarded; wallet version increment
+- [x] Audit trail: Transaction immutable (balanceBefore/After, requestId, providerReference), UsageLog + pricing snapshot, approvedBy
+- [x] Ledger consistency: setiap perubahan balance → Transaction; domain total == provider total_tokens (cached decomposition)
+
+### Concurrency Review — PASS
+
+- [x] Race: parallel charge same key → 1 settlement (P2002 → replay/IN_PROGRESS) — tested
+- [x] Parallel refund: 1 credit (unique usageLogId + version) — tested
+- [x] Estimate vs charge: estimate advisory; charge revalidasi atomik (conditional UPDATE) → FLOOR_EXCEEDED saat settle
+- [x] Concurrent wallet update: conditional UPDATE serialize di row
+- [x] Isolation: Prisma $transaction + conditional update (no lost update)
+- [x] Deadlock: lock ordering konsisten (idempotency insert → wallet update); risiko cross-flow teoritis rendah — P3 note
+
+### Performance Review — PASS
+
+- [x] N+1: tidak ada (query bounded: model resolve 2, charge ~5)
+- [x] Indexes: semua query path ter-index (usage [userId,createdAt]/[requestId]/[pricingVersionId], refund [userId,status]+unique usageLogId, idempotency unique(key,scope,userId), transactions [walletId,createdAt,id], pricing [modelId,status]+unique(modelId,version), apiKey unique keyHash)
+- [x] Pagination: keyset cursor (createdAt DESC, id DESC), limit+1, opaque base64url
+- [x] Transaction duration: pendek; provider call DI LUAR tx (post-paid)
+- [x] Provider timeout: AbortSignal + AI_PROVIDER_TIMEOUT_MS → 504, tanpa charge
+- [ ] P3 (accepted): raw provider response di-hold di memory selama parse (bounded oleh max_tokens di praktik)
+
+### Observability Review — PASS (dengan catatan)
+
+- [x] Structured logging (JSON) · correlation_id di semua log gateway + api.request
+- [x] request_id (req_+uuid) + X-Request-Id di semua response
+- [x] Latency: provider/billing/total (response + logs)
+- [x] Health endpoint: public, dengan provider liveness
+- [x] Error logging: gateway.failed + api.unhandled_error
+- [ ] P2 (tech debt): metrics readiness — belum ada counters/endpoint metrics (Prometheus/OTel); structured logs jadi fondasi. V1 acceptable.
+
+### Architecture Review — PASS
+
+- [x] Layering: Route → Service → Repository → Prisma; composition root
+- [x] Dependency direction: domain (billing/) zero dependency; service pakai abstraksi; gateway orkestrasi via interface
+- [x] DDD/SOLID: single-responsibility services, domain events setelah commit
+- [x] No business logic in API · no pricing logic in gateway · no HTTP in domain · no Prisma in domain (grep-verified)
+- [x] No duplicate charge / no duplicate provider call (tested)
+
+### Testing Review — PASS
+
+- [x] 262 tests: domain pure (Money, TokenUsage, PricingEngine, UsageMeter, BillingSummary, RequestContext) + service integration + API route tests
+- [x] Concurrency (charge/refund/wallet race) · rollback (failure injection) · edge case (malformed, timeout, overflow, null)
+- [ ] P3 (accepted): belum ada fuzz test / size-cap test
+
+### Documentation Review — PASS (dengan catatan)
+
+- [x] PROJECT_STATUS (riwayat milestone lengkap) · TODO_PROJECT · ADR-0001 · OpenAPI (13 endpoint, valid)
+- [ ] P3: README belum mendokumentasikan billing (era auth) · Billing Design Review docs hanya ADR yang di-commit
+
+### Perbaikan yang dilakukan milestone ini (hanya yang perlu)
+
+- [x] P2 FIX: cursor usage malformed → 500 → kini dianggap start-of-list (defensive parse + test baru)
+- [x] P3 FIX: OpenAPI bearerAuth description (JWT + API key)
+- [x] P3 FIX: PROJECT_STATUS header commit hash dikoreksi
+
+### Technical Debt (tercatat, non-blocking)
+
+- [ ] R5-R10 wallet-era (ms()→lib/time, RedisRateLimiter ttl, prisma CLI→devDeps, dll)
+- [ ] P2: metrics/counters endpoint (V2)
+- [ ] Migrations belum di-apply ke DB live (butuh Supabase creds — prisma migrate deploy saat deploy)
+- [ ] P3: README billing docs · size caps · fuzz tests
+
+### Known Limitations
+
+- Streaming/SSE, embeddings, vision, tool calling — out of scope V1 (documented)
+- Single provider (DeepSeek); multi-provider routing = future
+- API key identity selalu USER (admin key belum dimodelkan)
+- Rate limiter: memory (dev) / Redis-Upstash (prod) — wajib Redis untuk multi-instance
+- Events: in-process dispatcher (tanpa outbox) — upgrade path didokumentasikan
+
+### Deployment Prerequisites (saat go-live)
+
+- [ ] prisma migrate deploy (Supabase DATABASE_URL/DIRECT_URL)
+- [ ] DEEPINFRA_API_KEY + DEEPINFRA_BASE_URL, JWT secrets, WALLET_MAX_NEGATIVE_BALANCE
+- [ ] RATE_LIMITER_DRIVER=redis + UPSTASH_REDIS_REST_URL/TOKEN (multi-instance)
+- [ ] PAYMENT_PROVIDER=mock → xendit/stripe saat topup produksi
+
+> ✅ Milestone 9 COMPLETED — **Billing Module APPROVED FOR PRODUCTION (CLOSED)**.
+
 ---
 
 # In Progress
@@ -922,7 +1029,7 @@ Status:
 Billing
 
 Status:
-🟢 Milestone 8 COMPLETED (REST API Layer) — M9 berikutnya, belum dimulai
+✅ APPROVED FOR PRODUCTION — MODULE CLOSED (2026-07-31)
 
 Dashboard
 
@@ -933,7 +1040,7 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 9** — menunggu instruksi (jangan mulai sebelum approval).
+**User Dashboard (frontend)** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 
