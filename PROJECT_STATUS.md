@@ -2,7 +2,7 @@
 
 Last Updated: 2026-07-31
 
-Commit: `518dc69` — docs(billing): production readiness review and module closure
+Commit: `e3849fd` — feat(dashboard-m1): foundation — shell, routing, design system, theme, api client, route guard
 
 ## Overall Progress
 
@@ -12,7 +12,7 @@ Completion: 60%
 
 Current Phase:
 - Billing Module — ✅ APPROVED FOR PRODUCTION (CLOSED, 2026-07-31)
-- User Dashboard — 📘 DESIGN APPROVED FOR IMPLEMENTATION (2026-07-31, implementation NOT started)
+- User Dashboard — M1 Foundation ✅ COMPLETED (2026-07-31); next M2 Home (waiting approval)
 
 ---
 
@@ -1015,6 +1015,78 @@ Audit menyeluruh (tanpa fitur baru / tanpa perubahan arsitektur). Baseline: 262 
 
 ---
 
+## User Dashboard — Milestone 1: Foundation (2026-07-31)
+
+### Dashboard Shell
+
+- [x] AppShell (RouteGuard + TopBar + Sidebar + BottomNav + MoreDrawer) — src/components/layout/
+- [x] Sidebar desktop ≥1024px (2 groups, 10 items, aria-current active state)
+- [x] Bottom nav mobile (5 primary + More) + full-nav drawer (Esc/backdrop close, focus management)
+- [x] TopBar: brand, system status pill, theme toggle, avatar → user menu (Profile/Security/Settings/Logout)
+- [x] Responsive: sidebar lg+ · bottom-nav <lg · content max-width, safe-area padding
+
+### Routing
+
+- [x] 10 routes: /dashboard + {wallet, topup, usage, transactions, api-keys, models, profile, security, settings} — all 200 in prod smoke test, /nonexistent → 404
+
+### Authentication Guard
+
+- [x] RouteGuard: loading → full-screen skeleton · unauthenticated → /login?next= · authenticated → children
+- [x] API client 401 handler → global logout + redirect (expired session mid-use)
+
+### Design System (src/components/ui/)
+
+- [x] Button (5 variants/3 sizes/loading) · Card · Badge (6 tones) · Alert (4 tones, role=alert) · Input + Field · Dialog (focus trap, Esc, aria-modal) + ConfirmDialog · Table primitives · Tabs (arrow keys) · DropdownMenu (arrow keys) · Skeleton + SkeletonCard · EmptyState · LoadingSpinner · Pagination (cursor prev/next) + LoadMoreButton · SearchBox (debounced, clear) · FilterBar + FilterSelect · StatCard · PageHeader
+
+### Theme
+
+- [x] dark/light/system via ThemeProvider; localStorage persist; live system-follow; no-FOUC inline script (CSP-safe); toggle in TopBar
+
+### State Management
+
+- [x] TanStack Query v5: QueryClientProvider, factory defaults (retry policy, stale times), centralized QUERY_KEYS + STALE_TIMES
+- [x] React Context: AuthProvider (existing) + ThemeProvider
+- [x] URL search params pattern documented (used from M2)
+
+### API Client (src/lib/api-client.ts)
+
+- [x] Envelope parsing ({success,data,request_id} / {success,error:{code,message,details},request_id})
+- [x] Auth: JWT via HttpOnly cookies (default) + Bearer API key option
+- [x] request_id surfaced (header/body) · X-Correlation-Id stable per session
+- [x] Error mapping → ApiError (status/code/details/requestId/retryAfter) · 401 global handler · 429 Retry-After
+- [x] Retry policy: transient 5xx/network with exponential backoff+jitter; never 4xx; timeout (AbortSignal); offline detection
+
+### Error Handling
+
+- [x] app/dashboard/error.tsx (unstable_retry) · app/global-error.tsx · app/not-found.tsx · app/dashboard/not-found.tsx · app/dashboard/loading.tsx (skeleton)
+- [x] ErrorState component (request_id + retry, offline/rate-limit aware)
+
+### Accessibility
+
+- [x] Keyboard: Tab cycling in dialog, arrow keys in tabs/dropdown, Esc closes overlays
+- [x] ARIA: aria-current/expanded/haspopup/modal/live regions, sr-only labels
+- [x] Focus trap + focus return (Dialog) · global :focus-visible rings · AA contrast tokens
+- [x] prefers-reduced-motion respected (globals.css + Skeleton)
+
+### Performance
+
+- [x] Route-level code splitting (10 routes, 35 total) · skeleton-first loading.tsx · Link prefetch on nav · no heavy deps (inline SVG icons, zero icon lib) · charts deferred to M4
+
+### Tests (Vitest + RTL)
+
+- [x] 51 new tests: api-client (14), theme (7), route-guard (3), app-shell (7), sidebar (4), error-state + dashboard error (5), dialog a11y (6), pagination (5)
+- [x] Suite: 313 passed (262 existing + 51 new) · tsc ✅ · lint 0:0 ✅ · build ✅ (35 routes)
+
+### Verification (live prod smoke, port 3111)
+
+- [x] /dashboard + 9 subroutes → 200 · /login → 200 · unknown → 404
+- [x] SSR HTML: theme inline script + RouteGuard loading state present
+- [x] Server stopped & port cleaned
+
+> ✅ Milestone 1 COMPLETED — M2 (Home) NOT started (menunggu approval).
+
+---
+
 # In Progress
 
 ## Authentication
@@ -1035,13 +1107,13 @@ Status:
 Dashboard
 
 Status:
-📘 Design APPROVED FOR IMPLEMENTATION (docs/design/user-dashboard-design.md) — implementation 🔴 NOT started
+🟢 M1 Foundation COMPLETED (2026-07-31) — M2 (Home) NOT started
 
 ---
 
 # Next Task
 
-**User Dashboard implementation — M1 (Foundation: design system + app shell)** — menunggu instruksi (jangan mulai sebelum approval).
+**User Dashboard implementation — M2 (Home: widgets + GET /v1/dashboard/summary + PAYMENT_REQUIRED banner)** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 

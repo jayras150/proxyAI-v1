@@ -321,18 +321,20 @@ Tasks:
 
 ### User Dashboard
 
-Status: 📘 **DESIGN APPROVED FOR IMPLEMENTATION** (2026-07-31) — implementation NOT started
+Status: 🟢 **M1 Foundation COMPLETED** (2026-07-31) — M2 (Home) NOT started
 
-- [x] Architecture & UX design (docs/design/user-dashboard-design.md): IA, navigation, page/component hierarchy, data flow, API mapping, UX/responsive review, roadmap M1-M6
-- [x] Backend gaps diidentifikasi (additive, perlu approval saat milestone-nya): GET /v1/dashboard/summary, GET /v1/wallet/topups (list), PATCH /v1/me, POST /auth/change-password, GET/DELETE /auth/sessions, price fields di GET /v1/models
+- [x] Design approved (docs/design/user-dashboard-design.md) — IA, navigation, hierarchy, data flow, API mapping, UX/responsive, roadmap M1-M6
+- [x] **M1 Foundation**: AppShell (sidebar/bottom-nav/topbar/drawer), 10 routes, RouteGuard, design system (17 primitives), theme dark/light/system, TanStack Query + contexts, API client (envelope/retry/request+correlation id/bearer), error boundary + 404 + loading, a11y (focus trap, ARIA, reduced-motion), perf (code-split, skeleton, prefetch)
+- [x] Tests: 51 baru (layout, navigation, theme, route guard, api client, error boundary, dialog, pagination) — total 313 passed, tsc ✅, lint 0:0 ✅, build ✅ (35 routes), prod smoke ✅
 
-Tasks (saat implementasi nanti, per milestone M1-M6 di design doc):
-- [ ] M1 — Design system + app shell (sidebar/bottom-nav, dark mode, primitives, AuthGuard, TanStack Query)
+Tasks (saat implementasi nanti):
 - [ ] M2 — Home: widgets + GET /v1/dashboard/summary + PAYMENT_REQUIRED banner
 - [ ] M3 — Wallet + Topup (idempotent create, polling) + Transactions (filter/search/refund)
 - [ ] M4 — Usage charts + Models (pricing fields)
 - [ ] M5 — Profile + Security (password/sessions) + Settings + API Keys rotate
 - [ ] M6 — Hardening & production readiness review
+
+Backend gaps (additive, perlu approval saat milestone-nya): GET /v1/dashboard/summary, GET /v1/wallet/topups (list), PATCH /v1/me, POST /auth/change-password, GET/DELETE /auth/sessions, price fields di GET /v1/models
 
 ### Admin Dashboard
 

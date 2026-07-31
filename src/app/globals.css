@@ -4,3 +4,41 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 }
+
+/* ProxyAI design tokens (design doc §4.1) */
+:root {
+  --background: #fafafa; /* zinc-50 */
+  --foreground: #18181b; /* zinc-900 */
+}
+
+.dark {
+  --background: #09090b; /* zinc-950 */
+  --foreground: #f4f4f5; /* zinc-100 */
+}
+
+/* Global focus visibility — every interactive element gets a visible ring. */
+:focus-visible {
+  outline: none;
+}
+
+/* Numeric alignment for money/token figures (design doc §6.3). */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Respect reduced motion globally (design doc §7.3). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Remove default search input decoration (kept minimal for cross-browser). */
+input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
