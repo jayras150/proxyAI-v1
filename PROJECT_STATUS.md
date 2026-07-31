@@ -8,17 +8,17 @@ Commit: `0a783a8` — refactor(auth): consolidate auth helpers and single sessio
 
 Project Status: 🚧 In Development
 
-Completion: 42%
+Completion: 45%
 
 Current Phase:
-- Wallet System — Milestone 4 (API Layer)
+- Wallet System — Production Readiness Fixes (P1 expired payment, P2 rate limit identity)
 
 ---
 
 # Current Objectives
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
-2. 🔄 Build Wallet System (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 pending)
+2. ✅ Build Wallet System (M1-M4 ✅, Production Readiness ✅, M5 UI pending)
 3. 🔄 Build Billing Engine
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
@@ -347,6 +347,38 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 ### Next Milestone (belum dikerjakan)
 
 - M5: UI (dashboard balance card, topup form, transaction history)
+
+## Wallet System — Production Readiness Fixes (2026-07-31)
+
+### FIX P1 — Expired Payment Protection (CRITICAL)
+
+- [x] WebhookService: guard `now > topup.expiresAt` SEBELUM credit — tidak pernah kredit, tidak membuat Transaction
+- [x] Status → EXPIRED (konsisten dengan state machine), WebhookEvent → processed, ack ke provider (tidak redeliver)
+- [x] TopupRequestRepository.markExpired (conditional PENDING-only, race-safe) + TopupService.markExpiredInTransaction
+- [x] Event topup.failed di-emit (setelah commit)
+- [x] Tests: sebelum expiresAt → credit ✅; sesudah expiresAt → no credit + EXPIRED ✅; replay sesudah expired → no credit ✅; FAILED webhook untuk expired topup → EXPIRED preserved ✅
+
+### FIX P2 — Authenticated Rate Limit Identity
+
+- [x] Endpoint authenticated (wallet, transactions, topups GET/POST, api-keys) sekarang keyed by **userId** (JWT subject)
+- [x] Priority: userId → (future) API key ID → fallback IP
+- [x] Abstraction `enforceRateLimit(request, { identity })` tetap reusable — tidak terikat JWT; route yang memutuskan identity
+- [x] api-keys routes di-refactor ke mapApiError (konsisten dengan v1)
+- [x] Tests: bucket per-user independen ✅; scope terpisah ✅; IP fallback ✅
+
+### No Breaking Change
+
+- [x] OpenAPI tetap valid (tidak ada perubahan contract)
+- [x] Response/request contract tidak berubah
+
+### Verification
+
+- [x] npm test: 93 passed (bertambah 8: 4 expired payment + 4 rate limit identity)
+- [x] prisma generate ✅ / tsc ✅ / lint ✅ 0/0 / build ✅
+
+### Status
+
+- [x] Wallet: **APPROVED FOR PRODUCTION BACKEND**
 
 ---
 

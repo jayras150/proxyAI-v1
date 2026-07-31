@@ -128,6 +128,35 @@ export class WebhookService {
       throw error
     }
 
+    // 4b. EXPIRED PAYMENT GUARD (P1): a payment arriving after expiresAt
+    // must NEVER credit the wallet. Mark EXPIRED, record event as processed,
+    // and ack so the provider stops redelivering.
+    if (topup.expiresAt < new Date()) {
+      await this.transactionManager.withTransaction(async (tx) => {
+        await this.topupService.markExpiredInTransaction(tx, topup.id)
+        await this.webhookEventRepository.markProcessed(event.id, tx)
+      })
+      this.eventDispatcher.emit(
+        createDomainEvent('topup.failed', {
+          userId: topup.userId,
+          walletId: topup.walletId,
+          topupId: topup.id,
+          provider,
+          providerReference: topup.providerReference ?? verified.providerReference,
+          amount: topup.amount.toFixed(6),
+          currency: topup.currency,
+        })
+      )
+      logger.warn('webhook.topup_expired', {
+        provider,
+        provider_reference: verified.providerReference,
+        provider_event_id: verified.providerEventId,
+        topup_id: topup.id,
+        expires_at: topup.expiresAt.toISOString(),
+      })
+      return { outcome: 'processed', eventId: event.id, topupId: topup.id }
+    }
+
     // FAILED status from the provider: mark the topup FAILED, no credit.
     if (verified.status === 'FAILED') {
       await this.transactionManager.withTransaction(async (tx) => {

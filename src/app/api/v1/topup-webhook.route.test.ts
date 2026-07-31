@@ -45,6 +45,13 @@ class FakeTopupRepo implements TopupRequestRepository {
     this.rows.set(id, { ...r, status: 'PAID', transactionId })
     return this.rows.get(id)!
   }
+
+  async markExpired(id: string) {
+    const r = this.rows.get(id)
+    if (!r || r.status !== 'PENDING') return null
+    this.rows.set(id, { ...r, status: 'EXPIRED' })
+    return this.rows.get(id)!
+  }
 }
 
 class FakeIdempotencyRepo implements IdempotencyKeyRepository {

@@ -52,4 +52,15 @@ export class PrismaTopupRequestRepository implements TopupRequestRepository {
     if (result.count === 0) return null
     return client.topupRequest.findUnique({ where: { id } })
   }
+
+  async markExpired(id: string, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma
+    // Conditional update: only PENDING requests can be marked EXPIRED.
+    const result = await client.topupRequest.updateMany({
+      where: { id, status: 'PENDING' },
+      data: { status: 'EXPIRED' },
+    })
+    if (result.count === 0) return null
+    return client.topupRequest.findUnique({ where: { id } })
+  }
 }

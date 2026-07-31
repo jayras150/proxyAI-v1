@@ -136,6 +136,16 @@ Latest commit: `0a783a8` — refactor(auth): consolidate auth helpers and single
 - [x] API tests + OpenAPI validation: 85 tests passed
 - [x] prisma generate ✅ / tsc ✅ / lint ✅ / build ✅
 
+### Wallet System — Production Readiness Fixes (2026-07-31)
+
+- [x] P1: expired payment protection — webhook tidak pernah kredit setelah expiresAt (EXPIRED + processed + ack)
+- [x] P1 tests: sebelum/sesudah expiresAt, replay expired, FAILED-on-expired (4 test)
+- [x] P2: authenticated rate limit keyed by userId (priority: userId → API key → IP fallback)
+- [x] P2 tests: identity bucket separation (4 test)
+- [x] OpenAPI & contract tidak berubah (no breaking change)
+- [x] npm test: 93 passed / lint ✅ / build ✅ / prisma generate ✅
+- [x] Wallet status: **APPROVED FOR PRODUCTION BACKEND**
+
 ### Technical Debt (R5-R9 + R10)
 
 - [ ] R5 — ms() → lib/time.ts
@@ -207,6 +217,22 @@ Status: ✅ COMPLETE (2026-07-31) — 85 tests, lint, build passed
 ### Wallet System — Milestone 5: UI
 
 Status: 🔴 Not Started — menunggu persetujuan setelah M4
+
+Tasks:
+- [ ] Dashboard balance card (fetch /api/v1/wallet)
+- [ ] Topup form (amount, idempotency key, payment intent display)
+- [ ] Transaction history (cursor load more)
+- [ ] Topup status polling
+
+## 📋 In Progress
+
+### Wallet System — Production Readiness Fixes
+
+Status: ✅ COMPLETE — APPROVED FOR PRODUCTION BACKEND (2026-07-31)
+
+### Wallet System — Milestone 5: UI
+
+Status: 🔴 Not Started — menunggu persetujuan
 
 Tasks:
 - [ ] Dashboard balance card (fetch /api/v1/wallet)

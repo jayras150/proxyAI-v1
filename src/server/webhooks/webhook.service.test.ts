@@ -115,6 +115,13 @@ class FakeTopupRepo implements TopupRequestRepository {
     this.rows.set(id, { ...r, status: 'PAID', transactionId })
     return this.rows.get(id)!
   }
+
+  async markExpired(id: string) {
+    const r = this.rows.get(id)
+    if (!r || r.status !== 'PENDING') return null
+    this.rows.set(id, { ...r, status: 'EXPIRED' })
+    return this.rows.get(id)!
+  }
 }
 
 class FakeWebhookRepo implements WebhookEventRepository {
@@ -224,6 +231,22 @@ async function createPaidTopup(amount = '50.00', currency = 'USD') {
   return created.topup.providerReference!
 }
 
+/** Create a topup whose expiry is already in the past (expired). */
+async function createExpiredTopup(amount = '50.00') {
+  const wallet = await walletRepo.findByUserId('user-1')!
+  const topup = await topupRepo.create({
+    userId: 'user-1',
+    walletId: wallet!.id,
+    amount: new Prisma.Decimal(amount),
+    currency: 'USD',
+    provider: 'MOCK',
+    expiresAt: new Date(Date.now() - 1000), // already expired
+  })
+  const reference = `mock_expired_${topup.id}`
+  await topupRepo.updateProviderReference(topup.id, reference)
+  return reference
+}
+
 // ─── Tests ──────────────────────────────────────────────────────────────
 
 describe('WebhookService full payment flow', () => {
@@ -331,6 +354,77 @@ describe('WebhookService full payment flow', () => {
     expect(result.outcome).toBe('ignored')
     const wallet = await walletRepo.findByUserId('user-1')!
     expect(wallet!.balance.toString()).toBe('0')
+  })
+})
+
+describe('WebhookService expired payment protection (P1)', () => {
+  it('payment before expiresAt → credit succeeds', async () => {
+    const provider = new MockProvider()
+    const providerReference = await createPaidTopup('50.00') // expires in ~30min
+    const { rawBody, signature, headers } = provider.simulateWebhook({
+      providerReference, amount: '50.00', currency: 'USD', status: 'PAID',
+    })
+
+    const result = await webhookService.handlePaymentWebhook(rawBody, signature, headers)
+    expect(result.outcome).toBe('processed')
+
+    const wallet = await walletRepo.findByUserId('user-1')!
+    expect(wallet!.balance.toString()).toBe('50')
+  })
+
+  it('payment after expiresAt → NO credit, topup EXPIRED, acked', async () => {
+    const provider = new MockProvider()
+    const providerReference = await createExpiredTopup('50.00')
+    const { rawBody, signature, headers } = provider.simulateWebhook({
+      providerReference, amount: '50.00', currency: 'USD', status: 'PAID',
+    })
+
+    const result = await webhookService.handlePaymentWebhook(rawBody, signature, headers)
+    // Ack so the provider stops redelivering.
+    expect(result.outcome).toBe('processed')
+
+    const wallet = await walletRepo.findByUserId('user-1')!
+    expect(wallet!.balance.toString()).toBe('0') // never credited
+    expect(txRepo.transactions).toHaveLength(0) // no credit transaction
+
+    const topup = await topupRepo.findByProviderReference(providerReference)
+    expect(topup!.status).toBe('EXPIRED')
+  })
+
+  it('replay of an expired webhook → still NO credit', async () => {
+    const provider = new MockProvider()
+    const providerReference = await createExpiredTopup('50.00')
+    const { rawBody, signature, headers } = provider.simulateWebhook({
+      providerReference, amount: '50.00', currency: 'USD', status: 'PAID',
+    })
+
+    const first = await webhookService.handlePaymentWebhook(rawBody, signature, headers)
+    expect(first.outcome).toBe('processed')
+
+    // Same event redelivered → duplicate, still no credit.
+    const second = await webhookService.handlePaymentWebhook(rawBody, signature, headers)
+    expect(second.outcome).toBe('duplicate')
+
+    const wallet = await walletRepo.findByUserId('user-1')!
+    expect(wallet!.balance.toString()).toBe('0')
+    expect(txRepo.transactions).toHaveLength(0)
+  })
+
+  it('FAILED webhook for an expired topup → EXPIRED preserved, no credit', async () => {
+    const provider = new MockProvider()
+    const providerReference = await createExpiredTopup('50.00')
+    const { rawBody, signature, headers } = provider.simulateWebhook({
+      providerReference, amount: '50.00', currency: 'USD', status: 'FAILED',
+    })
+
+    const result = await webhookService.handlePaymentWebhook(rawBody, signature, headers)
+    expect(result.outcome).toBe('processed')
+
+    const wallet = await walletRepo.findByUserId('user-1')!
+    expect(wallet!.balance.toString()).toBe('0')
+    // Expired guard runs before FAILED handling: status stays EXPIRED.
+    const topup = await topupRepo.findByProviderReference(providerReference)
+    expect(topup!.status).toBe('EXPIRED')
   })
 })
 

@@ -49,4 +49,10 @@ export interface TopupRequestRepository {
     transactionId: string,
     tx?: Prisma.TransactionClient
   ): Promise<TopupRequest | null>
+
+  /**
+   * Mark a top-up EXPIRED (payment arrived after expiresAt).
+   * Only succeeds when the request is still PENDING (guards races).
+   */
+  markExpired(id: string, tx?: Prisma.TransactionClient): Promise<TopupRequest | null>
 }

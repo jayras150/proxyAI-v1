@@ -17,11 +17,17 @@ export async function GET(
 ) {
   const startedAt = Date.now()
   const correlationId = getCorrelationId(request)
-  const rate = await enforceRateLimit(request, RATE_LIMITS.walletRead)
-  if (rate.limited) return rate.response
 
   try {
     const payload = getAuthenticatedUser(request)
+
+    // Rate limit keyed by userId (JWT subject), fallback IP.
+    const rate = await enforceRateLimit(request, {
+      ...RATE_LIMITS.walletRead,
+      identity: payload.sub,
+    })
+    if (rate.limited) return rate.response
+
     const { id } = await params
 
     const parsed = topupQuerySchema.safeParse({ id })

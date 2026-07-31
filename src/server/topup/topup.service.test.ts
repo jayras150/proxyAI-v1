@@ -69,6 +69,13 @@ class FakeTopupRepo implements TopupRequestRepository {
     r.transactionId = transactionId
     return r
   }
+
+  async markExpired(id: string) {
+    const r = this.rows.get(id)
+    if (!r || r.status !== 'PENDING') return null
+    r.status = 'EXPIRED'
+    return r
+  }
 }
 
 const fakeWalletService = {

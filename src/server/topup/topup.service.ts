@@ -208,6 +208,11 @@ export class TopupService {
     return this.topupRepository.updateStatus(id, 'FAILED', tx)
   }
 
+  /** PENDING → EXPIRED inside the caller's transaction (webhook path). */
+  async markExpiredInTransaction(tx: TxClient, id: string): Promise<TopupRequest | null> {
+    return this.topupRepository.markExpired(id, tx)
+  }
+
   /** PENDING → EXPIRED */
   async markExpired(id: string): Promise<TopupRequest> {
     const topup = await this.topupRepository.findById(id)

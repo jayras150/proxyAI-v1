@@ -21,11 +21,17 @@ const IDEMPOTENCY_SCOPE = 'wallet:topup'
 export async function POST(request: NextRequest) {
   const startedAt = Date.now()
   const correlationId = getCorrelationId(request)
-  const rate = await enforceRateLimit(request, RATE_LIMITS.walletTopup)
-  if (rate.limited) return rate.response
 
   try {
     const payload = getAuthenticatedUser(request)
+
+    // Rate limit keyed by userId (JWT subject), fallback IP.
+    const rate = await enforceRateLimit(request, {
+      ...RATE_LIMITS.walletTopup,
+      identity: payload.sub,
+    })
+    if (rate.limited) return rate.response
+
     const idempotencyKey = request.headers.get(IDEMPOTENCY_KEY_HEADER)
 
     if (!idempotencyKey) {
