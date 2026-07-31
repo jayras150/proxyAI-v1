@@ -2,7 +2,7 @@
 
 Last Updated: 2026-07-31
 
-Latest commit: `0a783a8` — refactor(auth): consolidate auth helpers and single session lifetime source
+Latest commit: `09aaec0` — fix(wallet): protect against expired payments and key rate limits by user
 
 ---
 
@@ -161,95 +161,37 @@ Status: ✅ COMPLETE
 
 ---
 
-## 📋 In Progress
+## ✅ Wallet Module — OFFICIALLY CLOSED (2026-07-31)
 
-### Wallet System — Milestone 2: Wallet Core
+Status: ✅ **APPROVED FOR PRODUCTION BACKEND**
 
-Status: ✅ COMPLETE (2026-07-31) — 34 unit tests, lint, build, prisma generate passed
+- [x] ✓ Database Foundation (M1)
+- [x] ✓ Wallet Core (M2)
+- [x] ✓ Payment Services (M3)
+- [x] ✓ API Layer (M4)
+- [x] ✓ Production Readiness Review (4.5)
+- [x] ✓ Production Fixes (P1 expired payment, P2 rate limit identity)
 
-### Wallet System — Milestone 3: Topup & Payment Services
+Seluruh milestone Wallet selesai, diverifikasi (93 tests), dan disetujui. Wallet bukan lagi current task.
 
-Status: 🔴 Not Started — menunggu persetujuan setelah M2
+> Tech debt R5-R10 dan status Authentication Module: lihat bagian Completed Tasks di atas.
 
-## 📋 In Progress
+---
 
-### Wallet System — Milestone 3: Topup & Payment Services
+## 📋 Next Priority: Billing Engine
 
-Status: 🔴 Not Started — menunggu persetujuan setelah M2
-
-Tasks:
-- [ ] IdempotencyService implementation
-- [ ] TopupService (create request, verify payment)
-- [ ] PaymentService + PaymentProvider interface + MockProvider
-- [ ] WebhookEvent repository implementation
-
-### Wallet System — Milestone 4: API & UI
-
-Status: 🔴 Not Started
-
-Tasks:
-- [ ] API Routes /api/v1/wallet/*
-- [ ] Webhook /api/v1/webhooks/payments
-- [ ] UI: balance card, topup form, transaction history
-
-## 📋 In Progress
-
-### Wallet System — Milestone 3: Topup & Payment Services
-
-Status: ✅ COMPLETE (2026-07-31) — 64 tests, lint, build passed
-
-### Wallet System — Milestone 4: API & UI
-
-Status: 🔴 Not Started — menunggu persetujuan setelah M3
-
-Tasks:
-- [ ] API Routes /api/v1/wallet/*
-- [ ] Webhook /api/v1/webhooks/payments
-- [ ] OpenAPI spec validation
-- [ ] UI: balance card, topup form, transaction history
-
-## 📋 In Progress
-
-### Wallet System — Milestone 4: API Layer
-
-Status: ✅ COMPLETE (2026-07-31) — 85 tests, lint, build passed
-
-### Wallet System — Milestone 5: UI
-
-Status: 🔴 Not Started — menunggu persetujuan setelah M4
-
-Tasks:
-- [ ] Dashboard balance card (fetch /api/v1/wallet)
-- [ ] Topup form (amount, idempotency key, payment intent display)
-- [ ] Transaction history (cursor load more)
-- [ ] Topup status polling
-
-## 📋 In Progress
-
-### Wallet System — Production Readiness Fixes
-
-Status: ✅ COMPLETE — APPROVED FOR PRODUCTION BACKEND (2026-07-31)
-
-### Wallet System — Milestone 5: UI
-
-Status: 🔴 Not Started — menunggu persetujuan
-
-Tasks:
-- [ ] Dashboard balance card (fetch /api/v1/wallet)
-- [ ] Topup form (amount, idempotency key, payment intent display)
-- [ ] Transaction history (cursor load more)
-- [ ] Topup status polling
-
-### Billing Engine
-
-Status: 🔴 Not Started
+Status: 🔴 Not Started — NEXT MODULE (setelah Wallet Module ditutup)
 
 Tasks:
 - [ ] Pricing engine server service
 - [ ] Usage accounting
-- [ ] Wallet deduction after AI request
-- [ ] Idempotency support
+- [ ] Wallet deduction after AI request (via WalletService.debit)
+- [ ] Idempotency support (reuse IdempotencyService, scope billing:usage)
 - [ ] Refund strategy
+
+---
+
+## 📋 Upcoming Modules
 
 ### OpenAI Compatible API
 

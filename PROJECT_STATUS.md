@@ -2,7 +2,7 @@
 
 Last Updated: 2026-07-31
 
-Commit: `0a783a8` — refactor(auth): consolidate auth helpers and single session lifetime source
+Commit: `09aaec0` — fix(wallet): protect against expired payments and key rate limits by user
 
 ## Overall Progress
 
@@ -11,15 +11,16 @@ Project Status: 🚧 In Development
 Completion: 45%
 
 Current Phase:
-- Wallet System — Production Readiness Fixes (P1 expired payment, P2 rate limit identity)
+- Wallet Module — OFFICIALLY CLOSED ✅
+- Next Module: Billing Engine
 
 ---
 
 # Current Objectives
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
-2. ✅ Build Wallet System (M1-M4 ✅, Production Readiness ✅, M5 UI pending)
-3. 🔄 Build Billing Engine
+2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
+3. 🔄 Build Billing Engine (NEXT)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -198,11 +199,7 @@ Current Phase:
 - [x] Tidak ada enum yang tidak terpakai (semua 8 enum ter-referensi)
 - [x] userId di Transaction/TopupRequest sengaja denormalized (audit immutable, tanpa FK) — sesuai Design Review §10
 
-### Next Milestone (belum dikerjakan)
-
-- M2: Repository implementations (Prisma) + IdempotencyService + WalletService
-- M3: TopupService + PaymentService + MockProvider
-- M4: API Routes /api/v1 + UI
+> ✅ Milestone 1 COMPLETED — lihat ringkasan closure di bawah.
 
 ## Wallet System — Milestone 2: Wallet Core (2026-07-31)
 
@@ -240,10 +237,7 @@ Current Phase:
 - [x] Tidak ada console.log / as any / TODO / FIXME
 - [x] Fix ditemukan via test: decimal.js isPositive(0)=true → strict greaterThan(0); nextCursor null saat hasMore=false
 
-### Next Milestone (belum dikerjakan)
-
-- M3: TopupService + PaymentService + MockProvider + IdempotencyService impl
-- M4: API Routes /api/v1 + Webhook + UI
+> ✅ Milestone 2 COMPLETED.
 
 ## Wallet System — Milestone 3: Topup & Payment Services (2026-07-31)
 
@@ -307,9 +301,7 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 - [x] Concurrency: 2 parallel deliveries → tepat 1 credit (snapshot rollback tx manager)
 - [x] prisma generate ✅ / tsc ✅ / lint ✅ 0/0 / build ✅
 
-### Next Milestone (belum dikerjakan)
-
-- M4: API Routes /api/v1 + Webhook endpoint + UI (balance card, topup form, transaction history)
+> ✅ Milestone 3 COMPLETED.
 
 ## Wallet System — Milestone 4: API Layer (2026-07-31)
 
@@ -344,9 +336,7 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 - [x] npm test: 85 passed
 - [x] prisma generate ✅ / tsc ✅ / lint ✅ 0/0 / build ✅ (5 v1 routes)
 
-### Next Milestone (belum dikerjakan)
-
-- M5: UI (dashboard balance card, topup form, transaction history)
+> ✅ Milestone 4 COMPLETED.
 
 ## Wallet System — Production Readiness Fixes (2026-07-31)
 
@@ -380,6 +370,40 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 
 - [x] Wallet: **APPROVED FOR PRODUCTION BACKEND**
 
+## Wallet Module — OFFICIAL CLOSURE (2026-07-31)
+
+**Status: ✅ APPROVED FOR PRODUCTION BACKEND**
+
+**Completion Date:** 2026-07-31
+
+### Milestone Summary
+
+| Milestone | Deliverables | Status | Tests |
+|---|---|---|---|
+| M1 — Database Foundation | Prisma schema (Wallet, Transaction, TopupRequest, IdempotencyKey, WebhookEvent, 8 enums), migration + CHECK SQL, repository interfaces | ✅ | — |
+| M2 — Wallet Core | Money VO, WalletService (atomic credit/debit/validate), TransactionService (cursor), domain events, repository impls | ✅ | 34 |
+| M3 — Topup & Payment Services | PaymentProvider abstraction, MockProvider, PaymentService, TopupService, IdempotencyService, WebhookService | ✅ | 64 |
+| M4 — API Layer | openapi/v1.yaml, 5 endpoint /api/v1, Zod validation, error mapping, rate limit, structured logging | ✅ | 85 |
+| Production Readiness Review | 10-task audit: E2E, state machine, failure scenarios, security, performance, observability, architecture, tests, tech debt, docs | ✅ | — |
+| Production Fixes | P1 expired payment protection, P2 per-user rate limit identity | ✅ | 93 |
+
+### Production Readiness Review Summary (2026-07-31)
+
+- Score: **86/100** (Arch 90, Security 86, Maintainability 88, Scalability 82, Performance 92, Testability 84)
+- Strengths: layering bersih (Route→Service→Repository→Prisma), atomic financial ops, webhook replay protection, cursor pagination, provider abstraction
+- Verdict: **APPROVED FOR FRONTEND IMPLEMENTATION** → setelah fix P1/P2 → **APPROVED FOR PRODUCTION BACKEND**
+
+### Production Bugs Fixed
+
+- [x] **P1 (Critical):** webhook bisa mengkredit wallet setelah TopupRequest melewati expiresAt — kini: no credit, status EXPIRED, WebhookEvent processed, ack provider (4 test)
+- [x] **P2:** rate limit authenticated keyed by IP (shared bucket di belakang NAT) — kini keyed by userId (priority: userId → API key → IP fallback) (4 test)
+
+### Open Items (bukan blocker)
+
+- Migration belum di-apply ke DB live (butuh Supabase credentials — prisma migrate deploy saat deploy)
+- R5-R10 tech debt tercatat di TODO_PROJECT.md (non-blocking)
+- M5 UI (dashboard/topup/transactions) = task terpisah, belum dijadwalkan
+
 ---
 
 # In Progress
@@ -387,17 +411,17 @@ PAID/FAILED/EXPIRED → [none]        (tidak ada transisi keluar)
 ## Authentication
 
 Status:
-🟡 Core Complete — Remaining Blueprint gaps tracked below
+✅ Complete (blueprint compliant; admin TOTP scoped to Admin Dashboard phase)
 
 Wallet
 
 Status:
-🔴 Not Started
+✅ APPROVED FOR PRODUCTION BACKEND (officially closed 2026-07-31)
 
 Billing
 
 Status:
-🔴 Not Started
+🔴 Not Started — NEXT MODULE
 
 Dashboard
 
@@ -406,27 +430,17 @@ Status:
 
 ---
 
-# Remaining Blueprint Gaps (Authentication scope)
-
-- [x] ~~request_id in standard response contract (Blueprint §59)~~ — DONE via src/lib/api-response.ts
-- [x] ~~Rate limiting for auth endpoints, 60 req/min anonymous (Blueprint §67)~~ — DONE via RateLimiter abstraction
-- [x] ~~Security headers: CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy (Blueprint §38)~~ — DONE in next.config.ts
-- [ ] Admin TOTP + approval sessions (Blueprint §36-37) — admin phase
-
-Authentication Module is now fully blueprint compliant (except admin TOTP, scoped to admin phase).
-
----
-
 # Next Task
 
-After Authentication Module is fully compliant: Wallet System.
+**Billing Engine** — next priority module.
 
 Expected Deliverables
 
-- Wallet CRUD
-- Top-up flow
-- Balance validation
-- Transaction history
+- Pricing engine server service
+- Usage accounting
+- Wallet deduction after AI request (via WalletService.debit)
+- Idempotency support
+- Refund strategy
 
 ---
 
@@ -452,6 +466,12 @@ Architecture
 - HttpOnly Secure cookies for tokens
 - Refresh tokens hashed (SHA-256) at rest
 - API keys: pk_live_ prefix, SHA-256 hashed storage
+- Money selalu Decimal (string di API), tidak pernah number
+- Top-up: create request → payment gateway → webhook verify → credit (tidak pernah direct credit)
+- Idempotency: tabel terpisah reusable (IdempotencyKey)
+- Payment provider: abstraction (MockProvider V1, Xendit/Stripe future)
+- API versioning: /api/v1/ sejak awal
+- Error contract: { success, error: { code, message, details }, request_id }
 
 ---
 
