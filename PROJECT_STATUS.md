@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `a01e650` — feat(billing): add AI gateway billing orchestrator
+Commit: `e0541bd` — feat(billing): add v1 REST API layer over the AI gateway
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 57%
+Completion: 58%
 
 Current Phase:
-- Billing Engine — Milestone 7 (AI Gateway / Billing Orchestrator) ✅ COMPLETED
+- Billing Engine — Milestone 8 (REST API Layer) ✅ COMPLETED
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅, M7 ✅ — M8 berikutnya, belum dimulai)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅, M3 ✅, M4 ✅, M5 ✅, M6 ✅, M7 ✅, M8 ✅ — M9 berikutnya, belum dimulai)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -845,6 +845,66 @@ total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
 
 > ✅ Milestone 7 COMPLETED.
 
+## Billing Engine — Milestone 8: REST API Layer (2026-07-31)
+
+### API Layer (HTTP adapter ONLY)
+
+- [x] 8 endpoint baru di src/app/api/v1/ — POST /chat/completions, GET /models, GET /providers, GET /health, POST /estimate, POST /refund, GET /usage, GET /transactions
+- [x] Zero business logic di route (grep-verified: tidak ada PricingEngine/wallet repo/usage meter/Prisma/fetch di route)
+- [x] Route → validate → auth → authorization → service/gateway → map response/error — pola sama dengan wallet v1
+
+### Endpoint Review
+
+- [x] POST /v1/chat/completions — OpenAI-shaped completion di dalam envelope standar + billing + latency extension; model resolution via ModelService (model → AiModel + PricingVersion aktif)
+- [x] GET /v1/models — registry enabled models (OpenAI shape) · GET /v1/providers — AIProvider capabilities · GET /v1/health — public liveness + provider health (tidak pernah gagal karena provider)
+- [x] POST /v1/estimate — read-only (tidak pernah debit; tested: 0 provider call, 0 persist) · POST /v1/refund — own usage, admin bisa user_id override · GET /v1/usage — cursor pagination · GET /v1/transactions — wallet history
+
+### Auth Review
+
+- [x] lib/api-auth.ts — unified identity: Bearer pk_live_ (API key, SHA-256 lookup, lastUsedAt touch) | Bearer JWT | HttpOnly cookie; API-key identity = USER (admin key belum dimodelkan)
+- [x] Unauthorized → 401 (missing/invalid token, invalid API key — tested) · Forbidden → 403 (non-admin refund user_id override — tested, admin path tested)
+- [x] requireRole(['ADMIN','SUPER_ADMIN']) untuk operasi admin
+
+### Validation Review
+
+- [x] lib/ai-validation.ts (Zod): chatCompletionSchema (model/messages/temperature 0-2/top_p 0-1/max_tokens positive/stream=false), estimateSchema, refundSchema (usage_log_id, idempotency_key, user_id admin-only), usageQuerySchema — semua 400 VALIDATION_ERROR (tested)
+
+### Error Mapping Review
+
+- [x] mapApiError diperluas: GatewayError (VALIDATION→400, ESTIMATE_REJECTED→402, ESTIMATE_FAILED→500, PROVIDER_TIMEOUT→504, PROVIDER_ERROR/MALFORMED→502, USAGE_PARSE→502, CHARGE_FAILED→500), EstimateError, RefundError (409 duplicate, 403 mismatch, 404), ModelError (404), AuthError FORBIDDEN→403
+- [x] Tested: 402 estimate reject (provider tidak dipanggil), 504 timeout (tidak charge), 502 provider error, 500 CHARGE_FAILED actionable, 404 unknown model, 401/403
+
+### OpenAPI Review
+
+- [x] openapi/v1.yaml: 13 endpoint (5 wallet + 8 AI), schemas (ChatCompletionRequest/Response, BillingSummary, UsageDetail, Estimate, Refund, ModelList, ProviderList, Health, UsagePage), responses (Forbidden, PaymentRequired, BadGateway, GatewayTimeout), tags AI Gateway + Billing
+- [x] openapi.test.ts diperbarui: 13 endpoint, semua operasi punya responses + error envelopes — 7/7 pass
+
+### Rate Limit Review
+
+- [x] config/rate-limits.ts: aiChat 60/min, aiEstimate 120/min, aiRefund 30/min, aiRead 300/min (models/providers/usage/transactions), aiHealth 60/min public per-IP — identity: apiKeyId ?? userId (authenticated), IP (anonymous)
+- [x] Tested: 61 chat requests → 429 pada request ke-61
+
+### Observability
+
+- [x] request_id (req_+uuid) di setiap response + header X-Request-Id; correlation_id dari header x-correlation-id; logApiRequest (endpoint, requestId, correlationId, userId, transactionId, provider, status_code, duration_ms)
+
+### Composition
+
+- [x] composition.ts: full billing stack (Pricing/Usage/Refund/Model/ApiKey repos, PricingEngine, UsageMeter, Estimate/Charge/RefundService, DeepSeekProvider + FetchProviderTransport, AIGateway, ModelService, providerInfo/providerHealth/estimateUsage)
+
+### Test Coverage (24 test baru)
+
+- [x] chat completion (full pipeline + billing exact) ✓ / estimate ✓ / refund ✓ / usage ✓ / transaction history ✓
+- [x] validation (stream/messages/temperature) ✓ / auth (JWT, API key, invalid key, 401) ✓ / admin 403 + 200 ✓
+- [x] rate limit 429 ✓ / OpenAPI 13 endpoint ✓ / error mapping 402/404/500/502/504 ✓
+
+### Verification
+
+- [x] npm test: 261 passed (24 baru) / tsc ✅ / lint ✅ 0:0 / build ✅ / OpenAPI valid ✅
+- [x] Gateway dipakai ✓ / tidak ada pricing/wallet/provider logic di route (grep-verified) ✓
+
+> ✅ Milestone 8 COMPLETED.
+
 ---
 
 # In Progress
@@ -862,7 +922,7 @@ Status:
 Billing
 
 Status:
-🟢 Milestone 7 COMPLETED (AI Gateway / Billing Orchestrator) — M8 berikutnya, belum dimulai
+🟢 Milestone 8 COMPLETED (REST API Layer) — M9 berikutnya, belum dimulai
 
 Dashboard
 
@@ -873,7 +933,7 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 8** — menunggu instruksi (jangan mulai sebelum approval).
+**Billing Engine — Milestone 9** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 

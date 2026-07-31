@@ -151,6 +151,217 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/chat/completions:
+    post:
+      operationId: createChatCompletion
+      summary: Run a chat completion (billed via the wallet)
+      description: |
+        Validates → authenticates → resolves the model → AI Gateway
+        (estimate gate → provider → usage metering → charge). The response
+        is OpenAI-compatible inside the standard envelope, plus billing
+        and latency extensions. Streaming is not supported yet.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatCompletionRequest'
+      responses:
+        '200':
+          description: Chat completion with billing summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatCompletionResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '402':
+          $ref: '#/components/responses/PaymentRequired'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '504':
+          $ref: '#/components/responses/GatewayTimeout'
+  /v1/models:
+    get:
+      operationId: listModels
+      summary: List enabled models (OpenAI-compatible shape)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Model list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/providers:
+    get:
+      operationId: listProviders
+      summary: List configured AI providers and their capabilities
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Provider list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/health:
+    get:
+      operationId: getHealth
+      summary: Public liveness probe + provider health
+      responses:
+        '200':
+          description: Health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/estimate:
+    post:
+      operationId: estimateCost
+      summary: Read-only cost estimate + proceed gate (never debits)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EstimateRequest'
+      responses:
+        '200':
+          description: Estimate result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EstimateResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/refund:
+    post:
+      operationId: createRefund
+      summary: Refund a charged usage log (own usage; any usage when ADMIN)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '200':
+          description: Refund result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResponse'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/usage:
+    get:
+      operationId: listUsage
+      summary: List usage history (cursor pagination)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Usage page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsagePage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/transactions:
+    get:
+      operationId: listBillingTransactions
+      summary: List wallet transactions (cursor pagination)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Transaction page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransactionPage'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 components:
   securitySchemes:
     bearerAuth:
@@ -338,6 +549,367 @@ components:
               enum: [processed, duplicate, ignored]
         request_id:
           type: string
+    # ─── AI Gateway (Billing Milestone 8) ────────────────────────────────
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:
+          type: string
+          enum: [system, user, assistant]
+        content:
+          type: string
+    ChatCompletionRequest:
+      type: object
+      required: [model, messages]
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        temperature:
+          type: number
+          minimum: 0
+          maximum: 2
+        top_p:
+          type: number
+          minimum: 0
+          maximum: 1
+        max_tokens:
+          type: integer
+          minimum: 1
+        stream:
+          type: boolean
+          const: false
+          description: Streaming is not supported yet.
+        idempotency_key:
+          type: string
+          description: Optional client idempotency key for the charge.
+    UsageDetail:
+      type: object
+      required: [prompt_tokens, completion_tokens, total_tokens]
+      properties:
+        prompt_tokens:
+          type: integer
+        completion_tokens:
+          type: integer
+        total_tokens:
+          type: integer
+        prompt_tokens_details:
+          type: object
+          properties:
+            cached_tokens:
+              type: integer
+    BillingSummary:
+      type: object
+      required:
+        [transaction_id, usage_log_id, pricing_version_id, total_cost, currency]
+      properties:
+        transaction_id:
+          type: string
+        usage_log_id:
+          type: string
+        pricing_version_id:
+          type: string
+        total_cost:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+        wallet_balance_before:
+          $ref: '#/components/schemas/Money'
+        wallet_balance_after:
+          $ref: '#/components/schemas/Money'
+        wallet_status_after:
+          type: string
+    ChatCompletionResponse:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [id, object, created, model, choices, usage]
+          properties:
+            id:
+              type: string
+            object:
+              type: string
+            created:
+              type: integer
+            model:
+              type: string
+            choices:
+              type: array
+              items:
+                type: object
+                required: [index, message, finish_reason]
+                properties:
+                  index:
+                    type: integer
+                  message:
+                    type: object
+                    required: [role, content]
+                    properties:
+                      role:
+                        type: string
+                      content:
+                        type: string
+                  finish_reason:
+                    type: string
+            usage:
+              $ref: '#/components/schemas/UsageDetail'
+            provider:
+              type: string
+            provider_request_id:
+              type: string
+            billing:
+              $ref: '#/components/schemas/BillingSummary'
+            latency:
+              type: object
+              properties:
+                total_ms:
+                  type: integer
+                provider_ms:
+                  type: integer
+                billing_ms:
+                  type: integer
+        request_id:
+          type: string
+    ModelListResponse:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [object, data]
+          properties:
+            object:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                required: [id, object, owned_by]
+                properties:
+                  id:
+                    type: string
+                  object:
+                    type: string
+                  created:
+                    type: integer
+                  owned_by:
+                    type: string
+                  display_name:
+                    type: string
+                  context_window:
+                    type: integer
+        request_id:
+          type: string
+    ProviderListResponse:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [object, data]
+          properties:
+            object:
+              type: string
+            data:
+              type: array
+              items:
+                type: object
+                required: [id, version, capabilities]
+                properties:
+                  id:
+                    type: string
+                  version:
+                    type: string
+                  capabilities:
+                    type: object
+                    properties:
+                      streaming:
+                        type: boolean
+                      vision:
+                        type: boolean
+                      reasoning:
+                        type: boolean
+                      toolCalling:
+                        type: boolean
+                      jsonMode:
+                        type: boolean
+                      embeddings:
+                        type: boolean
+                      imageGeneration:
+                        type: boolean
+                      maxContextTokens:
+                        type: integer
+                      maxOutputTokens:
+                        type: integer
+        request_id:
+          type: string
+    HealthResponse:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [status, provider, provider_healthy, timestamp]
+          properties:
+            status:
+              type: string
+            provider:
+              type: string
+            provider_healthy:
+              type: boolean
+            provider_latency_ms:
+              type: [integer, 'null']
+            timestamp:
+              type: string
+              format: date-time
+        request_id:
+          type: string
+    EstimateRequest:
+      type: object
+      required: [model, messages]
+      properties:
+        model:
+          type: string
+        messages:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+        max_tokens:
+          type: integer
+          minimum: 1
+    EstimateResponse:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [model, estimated_cost, estimated_balance, currency, can_proceed]
+          properties:
+            model:
+              type: string
+            pricing_version_id:
+              type: string
+            estimated_cost:
+              $ref: '#/components/schemas/Money'
+            estimated_balance:
+              $ref: '#/components/schemas/Money'
+            currency:
+              type: string
+            can_proceed:
+              type: boolean
+            reason:
+              type: [string, 'null']
+        request_id:
+          type: string
+    RefundRequest:
+      type: object
+      required: [usage_log_id, idempotency_key]
+      properties:
+        usage_log_id:
+          type: string
+        reason:
+          type: string
+          maxLength: 500
+        idempotency_key:
+          type: string
+        user_id:
+          type: string
+          description: Admin-only — refund another user's usage log.
+    RefundResponse:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [refund_request_id, usage_log_id, transaction_id, amount, currency]
+          properties:
+            refund_request_id:
+              type: string
+            usage_log_id:
+              type: string
+            transaction_id:
+              type: string
+            amount:
+              $ref: '#/components/schemas/Money'
+            currency:
+              type: string
+            refund_status:
+              type: string
+            usage_status:
+              type: string
+            wallet_balance_after:
+              $ref: '#/components/schemas/Money'
+            replayed:
+              type: boolean
+        request_id:
+          type: string
+    UsagePage:
+      type: object
+      required: [success, data, request_id]
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required: [items, next_cursor, has_more]
+          properties:
+            items:
+              type: array
+              items:
+                type: object
+                required: [id, model, provider, status, total_tokens, user_cost, currency]
+                properties:
+                  id:
+                    type: string
+                  model:
+                    type: string
+                  provider:
+                    type: string
+                  status:
+                    type: string
+                  prompt_tokens:
+                    type: integer
+                  completion_tokens:
+                    type: integer
+                  cached_tokens:
+                    type: integer
+                  total_tokens:
+                    type: integer
+                  user_cost:
+                    $ref: '#/components/schemas/Money'
+                  currency:
+                    type: string
+                  request_id:
+                    type: [string, 'null']
+                  created_at:
+                    type: string
+                    format: date-time
+            next_cursor:
+              type: [string, 'null']
+            has_more:
+              type: boolean
+        request_id:
+          type: string
   responses:
     Unauthorized:
       description: Missing or invalid authentication
@@ -369,6 +941,30 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorEnvelope'
+    Forbidden:
+      description: The caller is not allowed to perform this operation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    PaymentRequired:
+      description: Request rejected by the billing gate (payment required)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    BadGateway:
+      description: The AI provider failed or returned malformed data
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    GatewayTimeout:
+      description: The AI provider timed out
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
     RateLimited:
       description: Too many requests
       headers:
@@ -389,3 +985,5 @@ tags:
   - name: Wallet
   - name: Topup
   - name: Webhook
+  - name: AI Gateway
+  - name: Billing

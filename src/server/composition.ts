@@ -16,6 +16,23 @@ import { IdempotencyService } from '@/server/idempotency/idempotency.service'
 import { PaymentService } from '@/server/payments/payment.service'
 import { WebhookService } from '@/server/webhooks/webhook.service'
 import { getPaymentProvider } from '@/server/payments'
+import { PrismaPricingRepository } from '@/server/pricing/prisma-pricing.repository'
+import { PrismaUsageRepository } from '@/server/usage/prisma-usage.repository'
+import { PrismaRefundRepository } from '@/server/refund/prisma-refund.repository'
+import { PrismaModelRepository } from '@/server/models/prisma-model.repository'
+import { PrismaApiKeyRepository } from '@/server/api-keys/prisma-api-key.repository'
+import { PricingEngine } from '@/server/billing/pricing-engine'
+import { createUsageMeter } from '@/server/billing/usage-meter'
+import { EstimateService } from '@/server/billing/estimate.service'
+import { ChargeService } from '@/server/billing/charge.service'
+import { RefundService } from '@/server/billing/refund.service'
+import { AIGateway } from '@/server/gateway/ai-gateway'
+import { DeepSeekProvider } from '@/server/providers/deepseek-provider'
+import { FetchProviderTransport } from '@/server/providers/fetch-transport'
+import { ModelService } from '@/server/models/model.service'
+import { env } from '@/config/env'
+import type { AIProvider, ProviderChatRequest } from '@/server/gateway/provider-types'
+import type { TokenUsage } from '@/server/billing/token-usage'
 
 export interface ApiServices {
   walletService: WalletService
@@ -24,6 +41,19 @@ export interface ApiServices {
   idempotencyService: IdempotencyService
   paymentService: PaymentService
   webhookService: WebhookService
+  // Billing Milestone 8 — AI Gateway stack
+  estimateService: EstimateService
+  chargeService: ChargeService
+  refundService: RefundService
+  aiGateway: AIGateway
+  modelService: ModelService
+  apiKeyRepository: PrismaApiKeyRepository
+  usageRepository: PrismaUsageRepository
+  providerInfo: { id: string; version: string; capabilities: ReturnType<AIProvider['capabilities']> }
+  /** Provider liveness via the AIProvider interface (health route). */
+  providerHealth: () => Promise<{ ok: boolean; latencyMs: number | null }>
+  /** Provider-owned token estimate (estimate route) — never pricing logic. */
+  estimateUsage: (request: ProviderChatRequest) => TokenUsage
 }
 
 let instance: ApiServices | null = null
@@ -67,6 +97,47 @@ export function createApiServices(): ApiServices {
     eventDispatcher
   )
 
+  // ─── Billing Milestone 8 — AI Gateway stack ───────────────────────────
+  const pricingRepository = new PrismaPricingRepository()
+  const usageRepository = new PrismaUsageRepository()
+  const refundRepository = new PrismaRefundRepository()
+  const modelRepository = new PrismaModelRepository()
+  const apiKeyRepository = new PrismaApiKeyRepository()
+
+  const pricingEngine = new PricingEngine()
+  const usageMeter = createUsageMeter()
+
+  const estimateService = new EstimateService(pricingRepository, walletService, pricingEngine)
+  const chargeService = new ChargeService(
+    pricingRepository,
+    usageRepository,
+    walletService,
+    idempotencyService,
+    transactionManager,
+    pricingEngine,
+    eventDispatcher,
+    usageMeter
+  )
+  const refundService = new RefundService(
+    refundRepository,
+    usageRepository,
+    walletService,
+    idempotencyService,
+    transactionManager,
+    eventDispatcher
+  )
+
+  const provider = new DeepSeekProvider({
+    usageMeter,
+    transport: new FetchProviderTransport({
+      baseUrl: env.deepinfraBaseUrl,
+      apiKey: env.deepinfraApiKey,
+    }),
+  })
+
+  const aiGateway = new AIGateway(estimateService, provider, usageMeter, chargeService)
+  const modelService = new ModelService(modelRepository, pricingRepository)
+
   return {
     walletService,
     transactionService,
@@ -74,6 +145,20 @@ export function createApiServices(): ApiServices {
     idempotencyService,
     paymentService,
     webhookService,
+    estimateService,
+    chargeService,
+    refundService,
+    aiGateway,
+    modelService,
+    apiKeyRepository,
+    usageRepository,
+    providerInfo: {
+      id: provider.name(),
+      version: provider.version(),
+      capabilities: provider.capabilities(),
+    },
+    providerHealth: async () => provider.health(),
+    estimateUsage: (request) => provider.estimateContext(request),
   }
 }
 

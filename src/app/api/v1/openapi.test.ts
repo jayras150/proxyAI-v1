@@ -23,7 +23,7 @@ describe('openapi/v1.yaml', () => {
     expect(spec.openapi).toMatch(/^3\.1/)
   })
 
-  it('documents all 5 wallet endpoints', () => {
+  it('documents all 13 v1 endpoints (wallet + AI gateway)', () => {
     const paths = Object.keys(spec.paths)
     expect(paths).toEqual(
       expect.arrayContaining([
@@ -32,9 +32,17 @@ describe('openapi/v1.yaml', () => {
         '/v1/wallet/topups',
         '/v1/wallet/topups/{id}',
         '/v1/webhooks/payments',
+        '/v1/chat/completions',
+        '/v1/models',
+        '/v1/providers',
+        '/v1/health',
+        '/v1/estimate',
+        '/v1/refund',
+        '/v1/usage',
+        '/v1/transactions',
       ])
     )
-    expect(Object.keys(spec.paths)).toHaveLength(5)
+    expect(paths).toHaveLength(13)
   })
 
   it('defines security schemes (bearer + webhook signature)', () => {

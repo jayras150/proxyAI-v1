@@ -22,4 +22,20 @@ export const RATE_LIMITS = {
 
   /** Payment webhooks — higher limit (provider retries), signature-gated */
   webhookPayments: { scope: 'webhook:payments', limit: 1200, windowSeconds: 60 },
+
+  // AI Gateway (Billing Milestone 8) — keyed by userId or apiKeyId
+  /** POST /v1/chat/completions — 60/min per identity */
+  aiChat: { scope: 'ai:chat', limit: 60, windowSeconds: 60 },
+
+  /** POST /v1/estimate — 120/min per identity */
+  aiEstimate: { scope: 'ai:estimate', limit: 120, windowSeconds: 60 },
+
+  /** POST /v1/refund — 30/min per identity */
+  aiRefund: { scope: 'ai:refund', limit: 30, windowSeconds: 60 },
+
+  /** GET models/providers/usage/transactions — 300/min per identity */
+  aiRead: { scope: 'ai:read', limit: 300, windowSeconds: 60 },
+
+  /** GET /v1/health — public, per IP */
+  aiHealth: { scope: 'ai:health', limit: 60, windowSeconds: 60 },
 } as const

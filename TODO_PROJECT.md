@@ -273,14 +273,24 @@ Status: 🟢 COMPLETED
 - [x] Unit + integration tests: 22 baru (total 237) — full pipeline dengan real services + fake transport/repos
 - [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / purity grep ✅
 
-### Implementasi — Milestone 8: REST API Layer (belum dimulai)
+### Implementasi — Milestone 8: REST API Layer (COMPLETED 2026-07-31)
+
+Status: 🟢 COMPLETED
+
+- [x] 8 endpoint v1 (chat/completions, models, providers, health, estimate, refund, usage, transactions) — HTTP adapter only, zero business logic
+- [x] lib/api-auth.ts (JWT + API key unified), lib/ai-validation.ts (Zod), mapApiError diperluas (402/502/504/403), rate limits aiChat/aiEstimate/aiRefund/aiRead/aiHealth
+- [x] OpenAPI 13 endpoint + schemas + responses (valid, 7/7 test)
+- [x] Composition root: full billing stack + ModelService + providerInfo/providerHealth/estimateUsage
+- [x] Integration + API tests: 24 baru (total 261) — chat, estimate, refund, usage, transactions, validation, auth, rate limit, OpenAPI
+- [x] Verification: tsc ✅ / lint 0:0 ✅ / build ✅ / OpenAPI valid ✅ / grep route purity ✅
+
+### Implementasi — Milestone 9: Reconciliation & Production Readiness (belum dimulai)
 
 Status: 🔴 Not Started — menunggu instruksi (jangan mulai sebelum approval)
 
 Tasks (saat implementasi nanti):
-- [ ] POST /v1/chat/completions + GET /v1/models (REST adapter di atas AIGateway)
-- [ ] Model registry resolution (model → modelId + pricingVersionId) + auth + rate limit
-- [ ] Reconciliation + Production Readiness Review + closure
+- [ ] Reconciliation (charge vs provider vs usage log) + Production Readiness Review + closure
+- [ ] Streaming/SSE (out of scope M8) + multi-provider routing + embeddings bila diminta
 
 ---
 
