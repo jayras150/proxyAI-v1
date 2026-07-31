@@ -3,8 +3,7 @@
 // Immutable audit snapshot of the pricing applied to a charge.
 // Pure domain object: no database dependency.
 
-import { Money } from '@/lib/money'
-import type { Currency } from '@prisma/client'
+import { Money, type CurrencyCode } from '@/lib/money'
 
 export class PricingSnapshotError extends Error {
   code: string
@@ -89,7 +88,7 @@ export class PricingSnapshot {
     return new PricingSnapshot(params)
   }
 
-  get currency(): Currency {
+  get currency(): CurrencyCode {
     return this.inputPrice.currency
   }
 

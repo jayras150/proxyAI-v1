@@ -9,6 +9,7 @@
 
 import { Prisma } from '@prisma/client'
 import { Money } from '@/lib/money'
+import { prismaToDecimal } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { sha256Hex } from '@/lib/crypto'
 import { createDomainEvent } from '@/server/events/event-dispatcher'
@@ -262,6 +263,6 @@ export class WebhookService {
   }
 
   private amountToMoney(topup: { amount: Prisma.Decimal; currency: string }) {
-    return Money.fromDecimal(topup.amount, topup.currency as 'USD' | 'IDR' | 'SGD')
+    return Money.fromDecimal(prismaToDecimal(topup.amount), topup.currency as 'USD' | 'IDR' | 'SGD')
   }
 }

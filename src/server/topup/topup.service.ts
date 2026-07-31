@@ -7,6 +7,7 @@
 //  - Explicit state machine: PENDING → PAID | FAILED | EXPIRED (no reverse).
 
 import { Money } from '@/lib/money'
+import { moneyToPrisma } from '@/lib/prisma'
 import { logger } from '@/lib/logger'
 import { env } from '@/config/env'
 import { WalletError, WalletErrorCode } from '@/server/wallet/wallet.errors'
@@ -118,7 +119,7 @@ export class TopupService {
     const topup = await this.topupRepository.create({
       userId,
       walletId: wallet.id,
-      amount: amount.value,
+      amount: moneyToPrisma(amount),
       currency: amount.currency,
       provider: this.paymentService.providerName as TopupRequest['provider'],
       expiresAt,

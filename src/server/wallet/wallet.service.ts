@@ -8,6 +8,7 @@
 //  - Domain events fire only AFTER the DB transaction commits.
 
 import { Money } from '@/lib/money'
+import { moneyToPrisma } from '@/lib/prisma'
 import { createDomainEvent } from '@/server/events/event-dispatcher'
 import type { EventDispatcher } from '@/server/events/event-dispatcher'
 import type { TransactionManager, TxClient } from '@/server/db/transaction-manager'
@@ -81,14 +82,14 @@ export class WalletService {
     this.assertCurrency(wallet, money)
 
     // Atomic increment (row-level, inside tx).
-    const updated = await this.walletRepository.credit(wallet.id, money.value, tx)
+    const updated = await this.walletRepository.credit(wallet.id, moneyToPrisma(money), tx)
 
     const transaction = await this.transactionRepository.create(
       {
         walletId: updated.id,
         userId,
-        amount: money.value,
-        balanceBefore: updated.balance.minus(money.value),
+        amount: moneyToPrisma(money),
+        balanceBefore: updated.balance.minus(moneyToPrisma(money)),
         balanceAfter: updated.balance,
         currency: wallet.currency,
         type: options.type,
@@ -140,7 +141,11 @@ export class WalletService {
     this.assertCurrency(wallet, money)
 
     // Atomic conditional decrement: null when balance < amount.
-    const updated = await this.walletRepository.debitIfSufficient(wallet.id, money.value, tx)
+    const updated = await this.walletRepository.debitIfSufficient(
+      wallet.id,
+      moneyToPrisma(money),
+      tx
+    )
     if (!updated) {
       throw new WalletError(
         WalletErrorCode.INSUFFICIENT_BALANCE,
@@ -152,8 +157,8 @@ export class WalletService {
       {
         walletId: updated.id,
         userId,
-        amount: money.value,
-        balanceBefore: updated.balance.plus(money.value),
+        amount: moneyToPrisma(money),
+        balanceBefore: updated.balance.plus(moneyToPrisma(money)),
         balanceAfter: updated.balance,
         currency: wallet.currency,
         type: options.type,
@@ -188,7 +193,7 @@ export class WalletService {
     }
     this.assertCurrency(wallet, money)
 
-    if (wallet.balance.lessThan(money.value)) {
+    if (wallet.balance.lessThan(moneyToPrisma(money))) {
       throw new WalletError(
         WalletErrorCode.INSUFFICIENT_BALANCE,
         'Wallet balance is insufficient.'

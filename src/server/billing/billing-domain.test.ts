@@ -70,24 +70,36 @@ describe('PricingSnapshot', () => {
 })
 
 describe('CostBreakdown', () => {
-  it('creates a valid breakdown with both costs', () => {
-    const breakdown = CostBreakdown.create(
-      Money.fromString('0.001', 'USD'),
-      Money.fromString('0.0011', 'USD')
-    )
+  const breakdownParams = () => ({
+    providerCost: Money.fromString('0.001', 'USD'),
+    markupCost: Money.fromString('0.0001', 'USD'),
+    serviceFee: Money.fromString('0.000001', 'USD'),
+    subtotal: Money.fromString('0.0011', 'USD'),
+    totalCost: Money.fromString('0.001101', 'USD'),
+  })
+
+  it('creates a valid breakdown with all components', () => {
+    const breakdown = CostBreakdown.create(breakdownParams())
     expect(breakdown.currency).toBe('USD')
-    expect(breakdown.userCost.toString()).toBe('0.001100')
+    expect(breakdown.totalCost.toString()).toBe('0.001101')
+    expect(breakdown.providerCost.toString()).toBe('0.001000')
   })
 
   it('rejects negative costs', () => {
     expect(() =>
-      CostBreakdown.create(Money.fromString('-0.01', 'USD'), Money.fromString('0.01', 'USD'))
+      CostBreakdown.create({
+        ...breakdownParams(),
+        totalCost: Money.fromString('-0.01', 'USD'),
+      })
     ).toThrow(CostBreakdownError)
   })
 
   it('rejects currency mismatch', () => {
     expect(() =>
-      CostBreakdown.create(Money.fromString('0.01', 'USD'), Money.fromString('0.01', 'IDR'))
+      CostBreakdown.create({
+        ...breakdownParams(),
+        markupCost: Money.fromString('0.0001', 'IDR'),
+      })
     ).toThrow(CostBreakdownError)
   })
 })

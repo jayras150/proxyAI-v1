@@ -2,16 +2,16 @@
 
 Last Updated: 2026-07-31
 
-Commit: `543bd04` — docs: lock billing engine design as approved for implementation
+Commit: `c810091` — feat(billing): add database foundation and domain model
 
 ## Overall Progress
 
 Project Status: 🚧 In Development
 
-Completion: 48%
+Completion: 50%
 
 Current Phase:
-- Billing Engine — Milestone 1 (Database Foundation & Domain Model)
+- Billing Engine — Milestone 2 (Pricing Engine)
 
 ---
 
@@ -19,7 +19,7 @@ Current Phase:
 
 1. ✅ Build Authentication (blueprint compliant + architecture cleanup)
 2. ✅ Build Wallet System — APPROVED FOR PRODUCTION BACKEND (closed 2026-07-31)
-3. 🔄 Build Billing Engine (M1 ✅, design locked — M2 berikutnya)
+3. 🔄 Build Billing Engine (M1 ✅, M2 ✅ — M3 berikutnya)
 4. 🔄 OpenAI Compatible API
 5. 🔄 User Dashboard
 6. 🔄 Admin Dashboard
@@ -438,6 +438,66 @@ Design terkunci — tidak akan diubah sebelum implementasi dimulai.
 
 ## Billing Engine — Milestone 1: Database Foundation & Domain Model (2026-07-31)
 
+- [x] Schema: PricingVersion, RefundRequest, UsageLog (UsageStatus enum + pricing snapshot + currency + cachedTokens), AiModel (price → PricingVersion), WalletStatus.PAYMENT_REQUIRED
+- [x] Enums: UsageStatus, RefundStatus, PricingVersionStatus
+- [x] Value objects: TokenUsage, PricingSnapshot, CostBreakdown (pure)
+- [x] Repository interfaces: PricingRepository, UsageRepository, RefundRepository
+- [x] Migration 20260731190000_billing_foundation + DROP CHECK wallets_balance_non_negative (ADR-0001)
+- [x] Verification: 104 tests, lint ✅, build ✅, prisma validate/generate ✅
+
+> ✅ Milestone 1 COMPLETED — lihat TODO_PROJECT untuk detail.
+
+## Billing Engine — Milestone 2: Pricing Engine (2026-07-31)
+
+### PricingEngine (pure domain service)
+
+- [x] src/server/billing/pricing-engine.ts — calculate(): deterministic, stateless, zero dependency (Prisma/DB/HTTP/provider/repository)
+- [x] Input: PricingSnapshot, TokenUsage, optional serviceFee override, optional minimumCharge override
+- [x] Output: CostBreakdown { providerCost, markupCost, serviceFee, subtotal, totalCost, currency }
+- [x] Semua operasi uang melalui Money VO (multiply/divide/floorTo/max ditambahkan)
+
+### Formula (terdokumentasi)
+
+```
+inputCost  = inputPrice  × promptTokens     / 1_000_000
+outputCost = outputPrice × completionTokens / 1_000_000
+cachedCost = inputPrice  × cachedTokens     / 1_000_000   (V1: input rate)
+providerCost = input + output + cached
+markupCost   = providerCost × markupPercent / 100
+subtotal     = providerCost + markupCost
+total        = subtotal + serviceFee  → floor 6dp → max(minCharge)
+```
+
+### Money Review
+
+- [x] Money refactor: Prisma.Decimal → decimal.js murni (domain zero Prisma — verified grep: hanya komentar)
+- [x] Money.multiply / divide / floorTo (ROUND_DOWN) / max ditambahkan
+- [x] CurrencyCode union domain (bukan Prisma enum) — structurally identical
+- [x] Boundary conversion di src/lib/prisma.ts (moneyToPrisma, prismaToDecimal, prismaToMoney) — repository/DB layer saja
+- [x] Wallet/Topup/Webhook services di-update ke boundary conversion (perilaku tidak berubah — semua test Wallet tetap lulus)
+
+### Rounding Policy (satu kebijakan, seluruh billing)
+
+- [x] Floor (ROUND_DOWN) ke 6 desimal, diterapkan SEKALI pada total akhir — tidak pernah overcharge
+- [x] Komponen antara full precision (tanpa early rounding)
+- [x] Minimum charge default $0.000001 (business policy, override per-call)
+
+### Test Coverage (15 test baru)
+
+- [x] input only / output only / mixed / cached / zero token (min charge)
+- [x] minimum charge raise / service fee override / markup 0
+- [x] rounding floor (never overcharge) / intermediate full precision
+- [x] high precision / large request 100M tokens / deterministic
+- [x] currency mismatch (service fee, minimum charge)
+
+### Verification
+
+- [x] npm test: 119 passed (15 pricing + 11 M1 domain + 93 existing)
+- [x] tsc ✅ / lint ✅ 0/0 / build ✅
+- [x] Domain billing zero dependency Prisma (grep-verified)
+
+---
+
 ### Database Schema
 
 - [x] `enum WalletStatus` + `PAYMENT_REQUIRED` (system-generated, ADR-0001)
@@ -508,7 +568,7 @@ Status:
 Billing
 
 Status:
-🟡 Milestone 1 COMPLETED (Database Foundation & Domain Model) — M2 Pricing Engine berikutnya
+🟡 Milestone 2 COMPLETED (Pricing Engine) — M3 Usage Metering berikutnya
 
 Dashboard
 
@@ -519,14 +579,14 @@ Status:
 
 # Next Task
 
-**Billing Engine — Milestone 2 (Pricing Engine)** — implementasi berikutnya.
+**Billing Engine — Milestone 3 (Usage Metering & ChargeService)** — implementasi berikutnya.
 
-Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance. M1 (schema, migration, value objects, repository interfaces) selesai 2026-07-31.
+Design sudah di-lock: Billing Design Review v2 + ADR-0001 Controlled Negative Balance. M1 (schema/migration/VO/repository interfaces) dan M2 (PricingEngine pure) selesai 2026-07-31.
 
 Expected Deliverables (saat implementasi nanti)
 
-- Pricing engine server service
-- Usage accounting
+- Usage metering service
+- ChargeService (debit + transaction + usage log, 1 DB tx)
 - Wallet deduction after AI request (via WalletService.debit)
 - Idempotency support
 - Refund strategy

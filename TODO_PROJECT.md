@@ -204,12 +204,23 @@ Status: ✅ **COMPLETED** (2026-07-31) — 104 tests, lint, build, prisma valida
 
 ### Implementasi — Milestone 2: Pricing Engine
 
+Status: ✅ **COMPLETED** (2026-07-31) — 119 tests, lint, build passed
+
+- [x] PricingEngine (pure, deterministic, stateless) — calculate(): PricingSnapshot + TokenUsage → CostBreakdown {providerCost, markupCost, serviceFee, subtotal, totalCost}
+- [x] Formula terdokumentasi (input/output/cached per 1M, markup, fee, min charge)
+- [x] Rounding policy tunggal: floor 6dp sekali di total akhir
+- [x] Money refactor ke decimal.js murni + CurrencyCode domain (zero Prisma di domain billing)
+- [x] Boundary conversion di lib/prisma.ts (moneyToPrisma / prismaToDecimal / prismaToMoney)
+- [x] Unit tests: 15 pricing + 11 M1 domain = total 119
+
+### Implementasi — Milestone 3: Usage Metering & ChargeService
+
 Status: 🔴 Not Started — menunggu instruksi
 
 Tasks (saat implementasi nanti):
-- [ ] PricingEngine (pure) — estimate/final, markup, min charge, rounding
-- [ ] Usage Metering service
-- [ ] M3: ChargeService + RefundService (1 DB tx, idempotency billing:usage)
+- [ ] Usage metering service (UsageMeter pure + UsageLogRepository impl)
+- [ ] ChargeService (1 DB tx: debit wallet + transaction AI_USAGE + usage log + idempotency billing:usage)
+- [ ] RefundService + RefundRequestRepository impl
 - [ ] M4: ProviderAdapter + DeepInfraProvider + ModelService (GET /v1/models)
 - [ ] M5: POST /v1/chat/completions (non-streaming + streaming/SSE) + embeddings
 - [ ] M6: Refund flow + reconciliation

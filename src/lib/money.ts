@@ -1,12 +1,23 @@
 // ProxyAI — Money Value Object
 // Blueprint Reference: Sprint 4 §19-22 — Wallet & Billing
-// Business Rule: money is ALWAYS Decimal, never JS number, for business ops.
-// Serialization to string happens only at the API layer (Design Review §3).
+// Business Rule: money is ALWAYS Decimal (decimal.js), never JS number, for
+// business ops. Serialization to string happens only at the API layer.
+//
+// Uses decimal.js directly (NOT Prisma.Decimal) so the billing domain has
+// zero dependency on Prisma / database — pure domain requirement.
 
-import { Prisma } from '@prisma/client'
-import type { Currency } from '@prisma/client'
+import Decimal from 'decimal.js'
 
 const DECIMAL_PLACES = 6
+
+/** Instance type of decimal.js Decimal. */
+type DecimalValue = InstanceType<typeof Decimal>
+
+/**
+ * Supported currencies — domain-level union that mirrors the DB enum values.
+ * Keeps the billing domain free of any Prisma import.
+ */
+export type CurrencyCode = 'USD' | 'IDR' | 'SGD'
 
 export class MoneyError extends Error {
   code: string
@@ -19,20 +30,20 @@ export class MoneyError extends Error {
 }
 
 /**
- * Immutable money value. Wraps Prisma.Decimal (decimal.js) so business
- * logic never touches float numbers.
+ * Immutable money value. Wraps decimal.js Decimal so business logic never
+ * touches float numbers. All arithmetic goes through this class.
  */
 export class Money {
   private constructor(
-    readonly amount: Prisma.Decimal,
-    readonly currency: Currency
+    readonly amount: DecimalValue,
+    readonly currency: CurrencyCode
   ) {}
 
   /** Create from a decimal-string representation, e.g. "50.00". */
-  static fromString(value: string, currency: Currency): Money {
-    let decimal: Prisma.Decimal
+  static fromString(value: string, currency: CurrencyCode): Money {
+    let decimal: DecimalValue
     try {
-      decimal = new Prisma.Decimal(value)
+      decimal = new Decimal(value)
     } catch {
       throw new MoneyError('INVALID_MONEY', `Invalid money value: "${value}"`)
     }
@@ -44,12 +55,12 @@ export class Money {
     return new Money(decimal, currency)
   }
 
-  static fromDecimal(amount: Prisma.Decimal, currency: Currency): Money {
+  static fromDecimal(amount: DecimalValue, currency: CurrencyCode): Money {
     return new Money(amount, currency)
   }
 
-  static zero(currency: Currency): Money {
-    return new Money(new Prisma.Decimal(0), currency)
+  static zero(currency: CurrencyCode): Money {
+    return new Money(new Decimal(0), currency)
   }
 
   isPositive(): boolean {
@@ -83,6 +94,31 @@ export class Money {
     return new Money(this.amount.minus(other.amount), this.currency)
   }
 
+  /** Multiply by a numeric factor (e.g. token count, markup rate). */
+  multiply(factor: DecimalValue | number | string): Money {
+    const f = factor instanceof Decimal ? factor : new Decimal(factor)
+    return new Money(this.amount.times(f), this.currency)
+  }
+
+  /** Divide by a numeric factor (e.g. tokens-per-million). */
+  divide(factor: DecimalValue | number | string): Money {
+    const f = factor instanceof Decimal ? factor : new Decimal(factor)
+    return new Money(this.amount.div(f), this.currency)
+  }
+
+  /** Round DOWN (floor) to the given decimal places — never overcharge. */
+  floorTo(places: number = DECIMAL_PLACES): Money {
+    return new Money(this.amount.toDecimalPlaces(places, Decimal.ROUND_DOWN), this.currency)
+  }
+
+  /**
+   * The larger of this and other (same currency) — used for minimum charge.
+   */
+  max(other: Money): Money {
+    this.assertSameCurrency(other)
+    return this.amount.greaterThan(other.amount) ? this : other
+  }
+
   /** -1 | 0 | 1 */
   compareTo(other: Money): -1 | 0 | 1 {
     this.assertSameCurrency(other)
@@ -98,7 +134,7 @@ export class Money {
   }
 
   /** Raw decimal for persistence (repository layer only). */
-  get value(): Prisma.Decimal {
+  get value(): DecimalValue {
     return this.amount
   }
 }

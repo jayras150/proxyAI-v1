@@ -2,7 +2,6 @@
 
 import { describe, it, expect } from 'vitest'
 import { Money, MoneyError } from '@/lib/money'
-import { Prisma } from '@prisma/client'
 
 describe('Money', () => {
   describe('fromString', () => {
@@ -67,7 +66,7 @@ describe('Money', () => {
 
     it('preserves Decimal for persistence', () => {
       const money = Money.fromString('1.5', 'USD')
-      expect(money.value).toBeInstanceOf(Prisma.Decimal)
+      expect(money.value.toString()).toBe('1.5')
     })
   })
 })
