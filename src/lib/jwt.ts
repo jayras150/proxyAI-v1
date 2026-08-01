@@ -45,6 +45,36 @@ export function verifyRefreshToken(token: string): JwtPayload {
 }
 
 /**
+ * Sign an arbitrary access token. Generic helper called by admin/auth.
+ */
+export function signAccessToken(payload: Record<string, unknown> & {
+  sub: string
+  email: string
+  role: string
+}): string {
+  return jwt.sign(
+    { ...payload, type: 'access' },
+    env.jwtSecret,
+    { expiresIn: '4h' }
+  )
+}
+
+/**
+ * Sign an arbitrary refresh token.
+ */
+export function signRefreshToken(payload: Record<string, unknown> & {
+  sub: string
+  email: string
+  role: string
+}): string {
+  return jwt.sign(
+    { ...payload, type: 'refresh' },
+    env.refreshTokenSecret,
+    { expiresIn: '24h' }
+  )
+}
+
+/**
  * Parse a human-readable time string to milliseconds.
  * Supports: "15m", "1h", "30d", etc.
  */

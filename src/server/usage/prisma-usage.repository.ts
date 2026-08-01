@@ -1,5 +1,6 @@
 // ProxyAI — Prisma UsageRepository
 // Billing Milestone 5 — Charge Service support
+// Milestone 4: filter support for findByUserIdPaginated.
 // Implements the UsageRepository interface (interface: src/server/usage/usage.repository.ts).
 
 import { prisma } from '@/lib/prisma'
@@ -9,6 +10,7 @@ import type { Cursor } from '@/server/db/pagination'
 import type {
   UsageLogCreateInput,
   UsageLogPage,
+  UsageFilters,
   UsagePeriodSummary,
   UsageRepository,
 } from './usage.repository'
@@ -54,10 +56,38 @@ export class PrismaUsageRepository implements UsageRepository {
   async findByUserIdPaginated(
     userId: string,
     cursor: Cursor | null,
-    limit: number
+    limit: number,
+    filters?: UsageFilters
   ): Promise<UsageLogPage> {
+    const where: Prisma.UsageLogWhereInput = { userId }
+
+    if (filters) {
+      if (filters.search) {
+        where.OR = [
+          { model: { contains: filters.search, mode: 'insensitive' } },
+          { provider: { contains: filters.search, mode: 'insensitive' } },
+          { requestId: { contains: filters.search, mode: 'insensitive' } },
+        ]
+      }
+      if (filters.model) {
+        where.model = { contains: filters.model, mode: 'insensitive' }
+      }
+      if (filters.status) {
+        where.status = filters.status as UsageStatus
+      }
+      if (filters.dateFrom || filters.dateTo) {
+        where.createdAt = {}
+        if (filters.dateFrom) {
+          where.createdAt.gte = filters.dateFrom
+        }
+        if (filters.dateTo) {
+          where.createdAt.lte = filters.dateTo
+        }
+      }
+    }
+
     const items = await prisma.usageLog.findMany({
-      where: { userId },
+      where,
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: limit + 1,
       ...(cursor

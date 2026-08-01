@@ -3,7 +3,6 @@
 // ProxyAI — Wallet Page (Milestone 3)
 // Displays balance, status banners, topup button, recent balance changes.
 
-import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWallet } from '@/hooks/use-wallet'
 import { useTransactions } from '@/hooks/use-transactions'
@@ -16,7 +15,7 @@ import { ErrorState } from '@/components/error-state'
 export default function WalletPage() {
   const router = useRouter()
   const { data: wallet, isLoading: walletLoading, error: walletError } = useWallet()
-  const { data: txPage, isLoading: txLoading, error: txError } = useTransactions({ limit: 10 })
+  const { data: txPage, isLoading: txLoading } = useTransactions({ limit: 10 })
 
   // Handle errors
   if (walletError && !walletLoading) {

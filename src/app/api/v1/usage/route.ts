@@ -1,6 +1,7 @@
 // ProxyAI — GET /api/v1/usage
 // Billing Milestone 8 — REST API Layer
 // Cursor-paginated usage history for the authenticated user.
+// Milestone 4: added search, model, status, date range filters.
 
 import { NextRequest } from 'next/server'
 import { authenticateRequest } from '@/lib/api-auth'
@@ -10,7 +11,7 @@ import { mapApiError } from '@/lib/api-error-mapper'
 import { getCorrelationId, logApiRequest } from '@/lib/api-request'
 import { enforceRateLimit, rateLimitHeaders } from '@/lib/rate-limit/helpers'
 import { RATE_LIMITS } from '@/config/rate-limits'
-import { usageQuerySchema } from '@/lib/ai-validation'
+import { usageQuerySchema } from '@/lib/usage-validation'
 
 export async function GET(request: NextRequest) {
   const startedAt = Date.now()
@@ -30,6 +31,11 @@ export async function GET(request: NextRequest) {
     const parsed = usageQuerySchema.safeParse({
       cursor: searchParams.get('cursor') ?? undefined,
       limit: searchParams.get('limit') ?? undefined,
+      search: searchParams.get('search') ?? undefined,
+      model: searchParams.get('model') ?? undefined,
+      status: searchParams.get('status') ?? undefined,
+      date_from: searchParams.get('date_from') ?? undefined,
+      date_to: searchParams.get('date_to') ?? undefined,
     })
     if (!parsed.success) {
       const details = Object.fromEntries(
@@ -58,10 +64,26 @@ export async function GET(request: NextRequest) {
         decodedCursor = null
       }
     }
+
+    // Build optional filters
+    const filters: {
+      search?: string
+      model?: string
+      status?: string
+      dateFrom?: Date
+      dateTo?: Date
+    } = {}
+    if (parsed.data.search) filters.search = parsed.data.search
+    if (parsed.data.model) filters.model = parsed.data.model
+    if (parsed.data.status) filters.status = parsed.data.status
+    if (parsed.data.date_from) filters.dateFrom = new Date(parsed.data.date_from)
+    if (parsed.data.date_to) filters.dateTo = new Date(parsed.data.date_to)
+
     const page = await usageRepository.findByUserIdPaginated(
       identity.userId,
       decodedCursor,
-      parsed.data.limit ?? 20
+      parsed.data.limit ?? 20,
+      filters
     )
 
     logApiRequest({
@@ -84,13 +106,21 @@ export async function GET(request: NextRequest) {
           model: log.model,
           provider: log.provider,
           status: log.status,
+          pricing_version: log.pricingVersionId,
           prompt_tokens: log.promptTokens,
           completion_tokens: log.completionTokens,
           cached_tokens: log.cachedTokens,
+          reasoning_tokens: null,
           total_tokens: log.totalTokens,
           user_cost: log.userCost.toFixed(6),
           currency: log.currency,
+          latency_ms: log.latencyMs,
           request_id: log.requestId,
+          pricing_version_id: log.pricingVersionId,
+          input_price: log.inputPrice?.toFixed(6) ?? null,
+          output_price: log.outputPrice?.toFixed(6) ?? null,
+          markup_percent: log.markupPercent?.toFixed(2) ?? null,
+          service_fee: log.serviceFee?.toFixed(6) ?? null,
           created_at: log.createdAt.toISOString(),
         })),
         next_cursor: page.nextCursor ? encodeCursor(page.nextCursor) : null,

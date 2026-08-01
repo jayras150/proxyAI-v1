@@ -1,6 +1,7 @@
 // ProxyAI — UsageRepository Interface
 // Billing Design Review v2 — Usage Metering + Pricing Snapshot
 // Milestone 1: interface only. Implementation arrives with services.
+// Milestone 4: added filter support for findByUserIdPaginated.
 
 import type { UsageLog, UsageStatus, Prisma, Currency } from '@prisma/client'
 import type { Cursor, Page } from '@/server/db/pagination'
@@ -12,6 +13,15 @@ export interface UsagePeriodSummary {
   requests: number
   tokens: number
   cost: Prisma.Decimal
+}
+
+/** Optional filters for usage pagination (Milestone 4). */
+export interface UsageFilters {
+  search?: string
+  model?: string
+  status?: string
+  dateFrom?: Date
+  dateTo?: Date
 }
 
 export interface UsageLogCreateInput {
@@ -51,11 +61,13 @@ export interface UsageRepository {
   /**
    * Keyset pagination over a user's usage history
    * (createdAt DESC, id DESC) — dashboard/reporting.
+   * Filters are additive (Milestone 4).
    */
   findByUserIdPaginated(
     userId: string,
     cursor: Cursor | null,
-    limit: number
+    limit: number,
+    filters?: UsageFilters
   ): Promise<UsageLogPage>
 
   /**

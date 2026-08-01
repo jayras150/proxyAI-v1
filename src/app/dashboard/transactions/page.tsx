@@ -49,9 +49,7 @@ export default function TransactionsPage() {
   const [detailOpen, setDetailOpen] = useState(false)
 
   const { data, isLoading, error } = useTransactions(filters)
-  const [allItems, setAllItems] = useState<TransactionItem[]>([])
 
-  // Accumulate items across cursor pagination for display
   const items = data?.items ?? []
 
   const handleFilterChange = useCallback((values: TransactionFilterValues) => {
@@ -67,8 +65,9 @@ export default function TransactionsPage() {
   }, [])
 
   const handleNextPage = useCallback(() => {
-    if (data?.next_cursor) {
-      setFilters((prev) => ({ ...prev, cursor: data.next_cursor }))
+    const nc = data?.next_cursor
+    if (nc) {
+      setFilters((prev) => ({ ...prev, cursor: nc }))
     }
   }, [data?.next_cursor])
 

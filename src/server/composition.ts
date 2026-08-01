@@ -51,6 +51,7 @@ export interface ApiServices {
   dashboardService: DashboardSummaryService
   apiKeyRepository: PrismaApiKeyRepository
   usageRepository: PrismaUsageRepository
+  pricingRepository: PrismaPricingRepository
   providerInfo: { id: string; version: string; capabilities: ReturnType<AIProvider['capabilities']> }
   /** Provider liveness via the AIProvider interface (health route). */
   providerHealth: () => Promise<{ ok: boolean; latencyMs: number | null }>
@@ -170,6 +171,7 @@ export function createApiServices(): ApiServices {
     dashboardService,
     apiKeyRepository,
     usageRepository,
+    pricingRepository,
     providerInfo: {
       id: provider.name(),
       version: provider.version(),
