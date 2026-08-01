@@ -8,35 +8,49 @@ export type AdminPermission =
   | 'admin:access'         // Can access admin dashboard
   | 'admin:users:read'     // View users
   | 'admin:users:write'    // Create/edit/delete users
+  | 'admin:users:suspend'  // Suspend/unsuspend/lock users
   | 'admin:wallet:read'    // View wallets
   | 'admin:wallet:write'   // Adjust wallet balances
+  | 'admin:wallet:credit'  // Credit wallet
+  | 'admin:wallet:debit'   // Debit wallet
   | 'admin:billing:read'   // View billing/pricing
   | 'admin:billing:write'  // Modify pricing
   | 'admin:providers:read' // View providers
   | 'admin:providers:write'// Configure providers
   | 'admin:pricing:read'   // View pricing config
   | 'admin:pricing:write'  // Modify pricing
+  | 'admin:refund:read'    // View refund requests
+  | 'admin:refund:approve' // Approve refunds
+  | 'admin:refund:reject'  // Reject refunds
   | 'admin:audit:read'     // View audit logs
   | 'admin:analytics:read' // View analytics
   | 'admin:settings:read'  // View admin settings
   | 'admin:settings:write' // Modify admin settings
   | 'admin:admins:read'    // View admin list
   | 'admin:admins:write'   // Create/manage admins
+  | 'admin:dashboard:read' // View dashboard overview
 
 /** Role-to-permission mapping. Single source of truth. */
 const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
   SUPER_ADMIN: [
     'admin:access',
+    'admin:dashboard:read',
     'admin:users:read',
     'admin:users:write',
+    'admin:users:suspend',
     'admin:wallet:read',
     'admin:wallet:write',
+    'admin:wallet:credit',
+    'admin:wallet:debit',
     'admin:billing:read',
     'admin:billing:write',
     'admin:providers:read',
     'admin:providers:write',
     'admin:pricing:read',
     'admin:pricing:write',
+    'admin:refund:read',
+    'admin:refund:approve',
+    'admin:refund:reject',
     'admin:audit:read',
     'admin:analytics:read',
     'admin:settings:read',
@@ -46,32 +60,43 @@ const ROLE_PERMISSIONS: Record<AdminRole, AdminPermission[]> = {
   ],
   ADMIN: [
     'admin:access',
+    'admin:dashboard:read',
     'admin:users:read',
     'admin:users:write',
+    'admin:users:suspend',
     'admin:wallet:read',
     'admin:wallet:write',
+    'admin:wallet:credit',
+    'admin:wallet:debit',
     'admin:billing:read',
     'admin:billing:write',
     'admin:providers:read',
     'admin:pricing:read',
+    'admin:refund:read',
+    'admin:refund:approve',
+    'admin:refund:reject',
     'admin:audit:read',
     'admin:analytics:read',
     'admin:settings:read',
   ],
   SUPPORT: [
     'admin:access',
+    'admin:dashboard:read',
     'admin:users:read',
     'admin:wallet:read',
     'admin:billing:read',
+    'admin:refund:read',
     'admin:audit:read',
   ],
   READ_ONLY: [
     'admin:access',
+    'admin:dashboard:read',
     'admin:users:read',
     'admin:wallet:read',
     'admin:billing:read',
     'admin:providers:read',
     'admin:pricing:read',
+    'admin:refund:read',
     'admin:audit:read',
     'admin:analytics:read',
   ],

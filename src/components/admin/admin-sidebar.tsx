@@ -19,7 +19,8 @@ interface AdminNavItem {
 const NAV_ITEMS: AdminNavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: '◈', permission: 'admin:access' },
   { href: '/admin/users', label: 'Users', icon: '👤', permission: 'admin:users:read' },
-  { href: '/admin/wallets', label: 'Wallets', icon: '💰', permission: 'admin:wallet:read' },
+  { href: '/admin/wallet', label: 'Wallet', icon: '💰', permission: 'admin:wallet:read' },
+  { href: '/admin/refunds', label: 'Refunds', icon: '↩', permission: 'admin:refund:read' },
   { href: '/admin/billing', label: 'Billing', icon: '📊', permission: 'admin:billing:read' },
   { href: '/admin/providers', label: 'Providers', icon: '🔌', permission: 'admin:providers:read' },
   { href: '/admin/pricing', label: 'Pricing', icon: '🏷️', permission: 'admin:pricing:read' },
