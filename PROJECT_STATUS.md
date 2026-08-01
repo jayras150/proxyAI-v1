@@ -1,8 +1,8 @@
 # ProxyAI Project Status
 
-Last Updated: 2026-07-31
+Last Updated: 2026-08-01
 
-Commit: `6772110` — feat(dashboard-m1): foundation — shell, routing, design system, theme, api client, route guard
+Commit: `16a9aed` — feat(dashboard-m2): home — summary endpoint, widgets, payment-required UX, tests
 
 ## Overall Progress
 
@@ -12,7 +12,7 @@ Completion: 60%
 
 Current Phase:
 - Billing Module — ✅ APPROVED FOR PRODUCTION (CLOSED, 2026-07-31)
-- User Dashboard — M1 Foundation ✅ COMPLETED (2026-07-31); next M2 Home (waiting approval)
+- User Dashboard — M1 Foundation ✅ COMPLETED (2026-07-31); M2 Home ✅ COMPLETED (2026-08-01); next M3 Wallet (waiting approval)
 
 ---
 
@@ -1107,13 +1107,13 @@ Status:
 Dashboard
 
 Status:
-🟢 M1 Foundation COMPLETED (2026-07-31) — M2 (Home) NOT started
+🟢 M1 Foundation COMPLETED (2026-07-31); M2 Home COMPLETED (2026-08-01) — M3 Wallet not started
 
 ---
 
 # Next Task
 
-**User Dashboard implementation — M2 (Home: widgets + GET /v1/dashboard/summary + PAYMENT_REQUIRED banner)** — menunggu instruksi (jangan mulai sebelum approval).
+**User Dashboard implementation — M3 (Wallet page)** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 
