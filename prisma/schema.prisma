@@ -233,6 +233,7 @@ model TopupRequest {
   updatedAt DateTime @updatedAt
 
   @@index([userId, status])
+  @@index([userId, createdAt, id]) // cursor pagination for frontend list
   @@index([walletId, status])
   @@map("topup_requests")
 }

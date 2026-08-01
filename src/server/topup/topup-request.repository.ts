@@ -4,6 +4,11 @@
 
 import type { TopupRequest, Prisma, PaymentProvider, TopupStatus, Currency } from '@prisma/client'
 
+export interface TopupPageCursor {
+  createdAt: Date
+  id: string
+}
+
 export interface TopupRequestCreateInput {
   userId: string
   walletId: string
@@ -49,6 +54,15 @@ export interface TopupRequestRepository {
     transactionId: string,
     tx?: Prisma.TransactionClient
   ): Promise<TopupRequest | null>
+
+  /**
+   * List top-ups for a user with cursor pagination (createdAt DESC, id DESC).
+   */
+  findByUserIdPaginated(
+    userId: string,
+    cursor: TopupPageCursor | null,
+    limit: number
+  ): Promise<{ items: TopupRequest[]; nextCursor: TopupPageCursor | null; hasMore: boolean }>
 
   /**
    * Mark a top-up EXPIRED (payment arrived after expiresAt).

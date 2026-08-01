@@ -31,7 +31,7 @@ beforeEach(async () => {
       getWallet: (userId: string) => walletRepo.findByUserId(userId),
     },
     transactionService: {
-      getWalletHistory: (walletId: string, cursor: string | null, limit: number) => {
+      getWalletHistory: (walletId: string, cursor: string | null, limit: number, _filters?: unknown) => {
         // Reuse the repository pagination directly.
         const decoded = cursor
           ? (JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8')) as {

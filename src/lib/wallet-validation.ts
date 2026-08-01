@@ -20,6 +20,11 @@ export const topupQuerySchema = z.object({
 export const transactionsQuerySchema = z.object({
   cursor: z.string().min(1).optional(),
   limit: z.coerce.number().int().min(1).max(100).optional(),
+  type: z.enum(['TOPUP', 'AI_USAGE', 'REFUND', 'ADJUSTMENT', 'ADMIN_CREDIT', 'ADMIN_DEBIT']).optional(),
+  status: z.string().min(1).optional(),
+  search: z.string().min(1).optional(),
+  date_from: z.string().min(1).optional(),
+  date_to: z.string().min(1).optional(),
 })
 
 export type CreateTopupInput = z.infer<typeof createTopupSchema>

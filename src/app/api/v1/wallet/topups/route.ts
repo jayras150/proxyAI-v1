@@ -18,6 +18,73 @@ import { WalletError, WalletErrorCode } from '@/server/wallet/wallet.errors'
 const IDEMPOTENCY_KEY_HEADER = 'x-idempotency-key'
 const IDEMPOTENCY_SCOPE = 'wallet:topup'
 
+// ProxyAI — GET /api/v1/wallet/topups
+// List top-up requests for the authenticated user (cursor pagination).
+// Backend Gap (Design Review approved): additive endpoint, no existing contract changed.
+
+export async function GET(request: NextRequest) {
+  const startedAt = Date.now()
+  const correlationId = getCorrelationId(request)
+
+  try {
+    const payload = getAuthenticatedUser(request)
+
+    const rate = await enforceRateLimit(request, {
+      ...RATE_LIMITS.walletRead,
+      identity: payload.sub,
+    })
+    if (rate.limited) return rate.response
+
+    const { searchParams } = new URL(request.url)
+    const cursor = searchParams.get('cursor') ?? undefined
+    const limitRaw = searchParams.get('limit') ?? undefined
+    const limit = limitRaw ? Number(limitRaw) : undefined
+
+    const { topupService } = getApiServices()
+    const page = await topupService.listTopups(
+      payload.sub,
+      cursor ?? null,
+      limit
+    )
+
+    logApiRequest({
+      endpoint: 'GET /api/v1/wallet/topups',
+      correlationId,
+      userId: payload.sub,
+      statusCode: 200,
+      durationMs: Date.now() - startedAt,
+    })
+
+    return jsonSuccess(
+      {
+        items: page.items.map((t) => ({
+          id: t.id,
+          status: t.status,
+          amount: t.amount.toFixed(6),
+          currency: t.currency,
+          provider: t.provider,
+          provider_reference: t.providerReference,
+          transaction_id: t.transactionId,
+          expires_at: t.expiresAt.toISOString(),
+          created_at: t.createdAt.toISOString(),
+        })),
+        next_cursor: page.nextCursor,
+        has_more: page.hasMore,
+      },
+      { headers: rateLimitHeaders(rate.result) }
+    )
+  } catch (error) {
+    const response = mapApiError(error)
+    logApiRequest({
+      endpoint: 'GET /api/v1/wallet/topups',
+      correlationId,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+    })
+    return response
+  }
+}
+
 export async function POST(request: NextRequest) {
   const startedAt = Date.now()
   const correlationId = getCorrelationId(request)

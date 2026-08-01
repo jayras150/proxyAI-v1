@@ -140,9 +140,18 @@ export class FakeTxRepo implements TransactionRepository {
   async findByWalletIdPaginated(
     walletId: string,
     cursor: { createdAt: Date; id: string } | null,
-    limit: number
+    limit: number,
+    _filters?: { type?: string; status?: string; dateFrom?: Date; dateTo?: Date; search?: string }
   ) {
-    let filtered = this.transactions.filter((t) => t.walletId === walletId)
+    let filtered = this.transactions.filter((t) => {
+      if (t.walletId !== walletId) return false
+      if (_filters?.type && t.type !== _filters.type) return false
+      if (_filters?.status && t.status !== _filters.status) return false
+      if (_filters?.dateFrom && t.createdAt < _filters.dateFrom) return false
+      if (_filters?.dateTo && t.createdAt > _filters.dateTo) return false
+      if (_filters?.search && t.description && !t.description.toLowerCase().includes(_filters.search.toLowerCase())) return false
+      return true
+    })
     if (cursor) {
       filtered = filtered.filter((t) => {
         if (t.createdAt < cursor.createdAt) return true

@@ -38,12 +38,18 @@ export interface TransactionRepository {
   findByReference(reference: string): Promise<Transaction | null>
 
   /**
-   * Keyset pagination: transactions of a wallet ordered by
-   * (createdAt DESC, id DESC) — stable even as new rows are added.
+   * Filter options for transaction pagination.
    */
   findByWalletIdPaginated(
     walletId: string,
     cursor: TransactionCursor | null,
-    limit: number
+    limit: number,
+    filters?: {
+      type?: TransactionType
+      status?: TransactionStatus
+      dateFrom?: Date
+      dateTo?: Date
+      search?: string
+    }
   ): Promise<TransactionPage>
 }

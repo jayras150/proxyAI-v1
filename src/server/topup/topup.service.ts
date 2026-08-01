@@ -17,6 +17,7 @@ import type { TransactionManager } from '@/server/db/transaction-manager'
 import type { TopupRequestRepository } from './topup-request.repository'
 import type { TopupRequest, TopupStatus } from '@prisma/client'
 import type { TxClient } from '@/server/db/transaction-manager'
+import type { TopupPageCursor } from './topup-request.repository'
 
 export class TopupError extends Error {
   code: string
@@ -161,6 +162,49 @@ export class TopupService {
         token: intent.token,
         expiresAt: intent.expiresAt,
       },
+    }
+  }
+
+  /**
+   * List top-ups for a user with cursor pagination.
+   * Returns an opaque next_cursor; null when there are no more pages.
+   */
+  async listTopups(
+    userId: string,
+    cursor: string | null,
+    limit: number = 20
+  ): Promise<{
+    items: TopupRequest[]
+    nextCursor: string | null
+    hasMore: boolean
+  }> {
+    const safeLimit = Math.min(Math.max(limit, 1), 100)
+    const decoded = cursor ? this.decodeCursor(cursor) : null
+    const page = await this.topupRepository.findByUserIdPaginated(userId, decoded, safeLimit)
+    return {
+      items: page.items,
+      nextCursor: page.hasMore && page.nextCursor ? this.encodeCursor(page.nextCursor) : null,
+      hasMore: page.hasMore,
+    }
+  }
+
+  /** Encode a keyset cursor into an opaque, URL-safe string. */
+  private encodeCursor(cursor: TopupPageCursor): string {
+    const raw = JSON.stringify({ c: cursor.createdAt.toISOString(), i: cursor.id })
+    return Buffer.from(raw, 'utf8').toString('base64url')
+  }
+
+  /** Decode an opaque cursor. Returns null when malformed. */
+  private decodeCursor(encoded: string): TopupPageCursor | null {
+    try {
+      const raw = Buffer.from(encoded, 'base64url').toString('utf8')
+      const parsed = JSON.parse(raw) as { c?: string; i?: string }
+      if (!parsed.c || !parsed.i) return null
+      const createdAt = new Date(parsed.c)
+      if (Number.isNaN(createdAt.getTime())) return null
+      return { createdAt, id: parsed.i }
+    } catch {
+      return null
     }
   }
 

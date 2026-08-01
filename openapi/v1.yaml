@@ -64,6 +64,48 @@ paths:
         '429':
           $ref: '#/components/responses/RateLimited'
   /v1/wallet/topups:
+    get:
+      operationId: listTopups
+      summary: List top-up requests (cursor pagination)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Opaque cursor from the previous page (next_cursor).
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          description: Maximum items per page.
+      responses:
+        '200':
+          description: Paginated list of top-up requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/TopupRequestItem'
+                  next_cursor:
+                    type: string
+                    nullable: true
+                  has_more:
+                    type: boolean
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/RateLimited'
     post:
       operationId: createTopup
       summary: Create a top-up request (payment intent)
@@ -610,6 +652,34 @@ components:
           $ref: '#/components/schemas/TopupResponse'
         payment:
           $ref: '#/components/schemas/PaymentIntent'
+    TopupRequestItem:
+      type: object
+      required: [id, status, amount, currency, expires_at, created_at]
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [PENDING, PAID, FAILED, EXPIRED]
+        amount:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+        provider:
+          type: string
+        provider_reference:
+          type: string
+          nullable: true
+        transaction_id:
+          type: string
+          nullable: true
+        expires_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+
     TopupResponse:
       type: object
       required: [id, status, amount, currency, expires_at]

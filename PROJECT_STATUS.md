@@ -2,7 +2,7 @@
 
 Last Updated: 2026-08-01
 
-Commit: `16a9aed` — feat(dashboard-m2): home — summary endpoint, widgets, payment-required UX, tests
+Commit: `16a9aed` + `feat(dashboard-m3): wallet, topup & transactions pages` (local)
 
 ## Overall Progress
 
@@ -1107,13 +1107,13 @@ Status:
 Dashboard
 
 Status:
-🟢 M1 Foundation COMPLETED (2026-07-31); M2 Home COMPLETED (2026-08-01) — M3 Wallet not started
+✅ M1 Foundation COMPLETED (2026-07-31); M2 Home COMPLETED (2026-08-01); M3 Wallet COMPLETED (2026-08-01)
 
 ---
 
 # Next Task
 
-**User Dashboard implementation — M3 (Wallet page)** — menunggu instruksi (jangan mulai sebelum approval).
+**User Dashboard implementation — M4 (Admin Dashboard)** — menunggu instruksi (jangan mulai sebelum approval).
 
 ---
 

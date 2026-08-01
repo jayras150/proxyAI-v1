@@ -4,7 +4,7 @@
 // WalletService (credit/debit) so every balance change stays atomic.
 
 import type { TransactionRepository, TransactionCursor } from './transaction.repository'
-import type { Transaction } from '@prisma/client'
+import type { Transaction, TransactionType, TransactionStatus } from '@prisma/client'
 
 export interface TransactionHistoryPage {
   items: Transaction[]
@@ -25,7 +25,14 @@ export class TransactionService {
   async getWalletHistory(
     walletId: string,
     cursor: string | null,
-    limit: number = DEFAULT_LIMIT
+    limit: number = DEFAULT_LIMIT,
+    filters?: {
+      type?: TransactionType
+      status?: TransactionStatus
+      dateFrom?: Date
+      dateTo?: Date
+      search?: string
+    }
   ): Promise<TransactionHistoryPage> {
     const safeLimit = Math.min(Math.max(limit, 1), MAX_LIMIT)
     const decoded = cursor ? this.decodeCursor(cursor) : null
@@ -33,7 +40,8 @@ export class TransactionService {
     const page = await this.transactionRepository.findByWalletIdPaginated(
       walletId,
       decoded,
-      safeLimit
+      safeLimit,
+      filters
     )
 
     return {

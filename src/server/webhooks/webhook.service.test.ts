@@ -122,6 +122,10 @@ class FakeTopupRepo implements TopupRequestRepository {
     return this.rows.get(id)!
   }
 
+  async findByUserIdPaginated(_userId: string, _cursor: { createdAt: Date; id: string } | null, _limit: number) {
+    return { items: [], nextCursor: null, hasMore: false }
+  }
+
   async markExpired(id: string) {
     const r = this.rows.get(id)
     if (!r || r.status !== 'PENDING') return null

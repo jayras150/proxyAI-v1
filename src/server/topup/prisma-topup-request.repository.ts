@@ -6,6 +6,7 @@ import type { Prisma, TopupStatus } from '@prisma/client'
 import type {
   TopupRequestRepository,
   TopupRequestCreateInput,
+  TopupPageCursor,
 } from './topup-request.repository'
 
 export class PrismaTopupRequestRepository implements TopupRequestRepository {
@@ -32,6 +33,27 @@ export class PrismaTopupRequestRepository implements TopupRequestRepository {
       where: { id },
       data: { providerReference },
     })
+  }
+
+  async findByUserIdPaginated(
+    userId: string,
+    cursor: TopupPageCursor | null,
+    limit: number
+  ) {
+    const take = Math.min(Math.max(limit, 1), 100)
+    const items = await prisma.topupRequest.findMany({
+      where: { userId },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      take: take + 1,
+      ...(cursor ? { cursor: { id: cursor.id }, skip: 1 } : {}),
+    })
+    const hasMore = items.length > take
+    const sliced = hasMore ? items.slice(0, take) : items
+    return {
+      items: sliced,
+      nextCursor: hasMore ? { createdAt: sliced[sliced.length - 1].createdAt, id: sliced[sliced.length - 1].id } : null,
+      hasMore,
+    }
   }
 
   async updateStatus(id: string, status: TopupStatus, tx?: Prisma.TransactionClient) {
