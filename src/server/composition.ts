@@ -30,6 +30,7 @@ import { AIGateway } from '@/server/gateway/ai-gateway'
 import { DeepSeekProvider } from '@/server/providers/deepseek-provider'
 import { FetchProviderTransport } from '@/server/providers/fetch-transport'
 import { ModelService } from '@/server/models/model.service'
+import { DashboardSummaryService } from '@/server/dashboard/dashboard-summary.service'
 import { env } from '@/config/env'
 import type { AIProvider, ProviderChatRequest } from '@/server/gateway/provider-types'
 import type { TokenUsage } from '@/server/billing/token-usage'
@@ -47,6 +48,7 @@ export interface ApiServices {
   refundService: RefundService
   aiGateway: AIGateway
   modelService: ModelService
+  dashboardService: DashboardSummaryService
   apiKeyRepository: PrismaApiKeyRepository
   usageRepository: PrismaUsageRepository
   providerInfo: { id: string; version: string; capabilities: ReturnType<AIProvider['capabilities']> }
@@ -137,6 +139,21 @@ export function createApiServices(): ApiServices {
 
   const aiGateway = new AIGateway(estimateService, provider, usageMeter, chargeService)
   const modelService = new ModelService(modelRepository, pricingRepository)
+  const dashboardService = new DashboardSummaryService(
+    walletService,
+    transactionService,
+    usageRepository,
+    apiKeyRepository,
+    modelService,
+    async () => {
+      const health = await provider.health().catch(() => ({ ok: false, latencyMs: null }))
+      return {
+        id: provider.name(),
+        healthy: health.ok,
+        latency_ms: health.latencyMs,
+      }
+    }
+  )
 
   return {
     walletService,
@@ -150,6 +167,7 @@ export function createApiServices(): ApiServices {
     refundService,
     aiGateway,
     modelService,
+    dashboardService,
     apiKeyRepository,
     usageRepository,
     providerInfo: {

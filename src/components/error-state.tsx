@@ -37,6 +37,13 @@ function describe(error: unknown): { title: string; message: string; requestId: 
         requestId: error.requestId,
       }
     }
+    if (error.status === 402) {
+      return {
+        title: 'Payment required',
+        message: error.message || 'Your wallet needs a top-up to continue.',
+        requestId: error.requestId,
+      }
+    }
     return { title: 'Something went wrong', message: error.message, requestId: error.requestId }
   }
   if (error instanceof Error) {

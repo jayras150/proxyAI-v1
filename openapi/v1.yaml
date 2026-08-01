@@ -223,6 +223,30 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '429':
           $ref: '#/components/responses/RateLimited'
+  /v1/dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      summary: Dashboard Home summary (balance, usage, recent activity) in one round trip
+      description: |
+        Single request backing the Dashboard Home page. Returns wallet state,
+        today/month spend (COMPLETED usage only), recent transactions (5),
+        recent usage (5), active API key count, model registry summary and
+        provider status. Money values are decimal strings.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
   /v1/health:
     get:
       operationId: getHealth
@@ -423,7 +447,101 @@ components:
           enum: [USD, IDR, SGD]
         status:
           type: string
-          enum: [ACTIVE, LOCKED, SUSPENDED]
+          enum: [ACTIVE, LOCKED, SUSPENDED, PAYMENT_REQUIRED]
+    DashboardTransactionItem:
+      type: object
+      required: [id, type, amount, balance_after, currency, status, created_at]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [TOPUP, AI_USAGE, REFUND, ADJUSTMENT, ADMIN_CREDIT, ADMIN_DEBIT]
+        amount:
+          $ref: '#/components/schemas/Money'
+        balance_after:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+        status:
+          type: string
+        description:
+          type: [string, 'null']
+        created_at:
+          type: string
+          format: date-time
+    DashboardUsageItem:
+      type: object
+      required: [id, model, provider, status, total_tokens, user_cost, currency, created_at]
+      properties:
+        id:
+          type: string
+        model:
+          type: string
+        provider:
+          type: string
+        status:
+          type: string
+        total_tokens:
+          type: integer
+        user_cost:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    DashboardSummary:
+      type: object
+      required:
+        [balance, currency, wallet_status, requests_today, tokens_today, spend_today,
+         spend_month, spend_previous_month, active_keys, available_models,
+         default_model, latest_transactions, latest_usage, provider]
+      properties:
+        balance:
+          $ref: '#/components/schemas/Money'
+        currency:
+          type: string
+          enum: [USD, IDR, SGD]
+        wallet_status:
+          type: string
+          enum: [ACTIVE, LOCKED, SUSPENDED, PAYMENT_REQUIRED]
+        requests_today:
+          type: integer
+        tokens_today:
+          type: integer
+        spend_today:
+          $ref: '#/components/schemas/Money'
+        spend_month:
+          $ref: '#/components/schemas/Money'
+        spend_previous_month:
+          $ref: '#/components/schemas/Money'
+        active_keys:
+          type: integer
+        available_models:
+          type: integer
+        default_model:
+          type: [string, 'null']
+        latest_transactions:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardTransactionItem'
+        latest_usage:
+          type: array
+          maxItems: 5
+          items:
+            $ref: '#/components/schemas/DashboardUsageItem'
+        provider:
+          type: object
+          required: [id, healthy, latency_ms]
+          properties:
+            id:
+              type: string
+            healthy:
+              type: boolean
+            latency_ms:
+              type: [integer, 'null']
     TransactionItem:
       type: object
       required: [id, type, amount, balance_before, balance_after, currency, status, created_at]

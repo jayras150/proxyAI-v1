@@ -425,6 +425,17 @@ class FakeUsageRepository implements UsageRepository, Snapshottable {
     return { items, nextCursor: null, hasMore: false }
   }
 
+  async aggregatePeriod(userId: string, from: Date, to: Date) {
+    const charged = this.logs.filter(
+      (l) => l.userId === userId && l.status === 'COMPLETED' && l.createdAt >= from && l.createdAt < to
+    )
+    return {
+      requests: charged.length,
+      tokens: charged.reduce((sum, l) => sum + l.totalTokens, 0),
+      cost: charged.reduce((sum, l) => sum.plus(l.userCost), new Prisma.Decimal(0)),
+    }
+  }
+
   async updateStatus(id: string, status: UsageLog['status']) {
     const log = this.logs.find((l) => l.id === id)!
     log.status = status
@@ -521,6 +532,10 @@ class FakeApiKeyRepository implements ApiKeyRepository {
   async touchLastUsed(id: string) {
     const key = [...this.keys.values()].find((k) => k.id === id)
     if (key) key.lastUsedAt = new Date()
+  }
+
+  async countActiveByUserId(userId: string) {
+    return [...this.keys.values()].filter((k) => k.userId === userId && k.status === 'ACTIVE').length
   }
 }
 

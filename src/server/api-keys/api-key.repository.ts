@@ -9,4 +9,7 @@ export interface ApiKeyRepository {
 
   /** Bump lastUsedAt (audit for key rotation). */
   touchLastUsed(id: string): Promise<void>
+
+  /** Count ACTIVE keys owned by a user (dashboard summary). */
+  countActiveByUserId(userId: string): Promise<number>
 }

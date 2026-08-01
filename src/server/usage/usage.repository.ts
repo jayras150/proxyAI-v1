@@ -7,6 +7,13 @@ import type { Cursor, Page } from '@/server/db/pagination'
 
 export type UsageLogPage = Page<UsageLog>
 
+/** Aggregated usage over a period (charged logs only: status COMPLETED). */
+export interface UsagePeriodSummary {
+  requests: number
+  tokens: number
+  cost: Prisma.Decimal
+}
+
 export interface UsageLogCreateInput {
   userId: string
   apiKeyId?: string | null
@@ -50,6 +57,12 @@ export interface UsageRepository {
     cursor: Cursor | null,
     limit: number
   ): Promise<UsageLogPage>
+
+  /**
+   * Aggregate charged usage (status COMPLETED) in [from, to).
+   * Used by the dashboard summary (today / month / previous month).
+   */
+  aggregatePeriod(userId: string, from: Date, to: Date): Promise<UsagePeriodSummary>
 
   /** Transition status (PENDING → COMPLETED/FAILED). */
   updateStatus(id: string, status: UsageStatus, tx?: Prisma.TransactionClient): Promise<UsageLog>

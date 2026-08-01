@@ -16,4 +16,8 @@ export class PrismaApiKeyRepository implements ApiKeyRepository {
       data: { lastUsedAt: new Date() },
     })
   }
+
+  async countActiveByUserId(userId: string): Promise<number> {
+    return prisma.apiKey.count({ where: { userId, status: 'ACTIVE' } })
+  }
 }

@@ -10,6 +10,7 @@ import { ApiError } from '@/lib/api-client'
 
 export const STALE_TIMES = {
   wallet: 15_000,
+  dashboard: 15_000,
   lists: 30_000,
   models: 5 * 60_000,
   health: 60_000,
@@ -17,6 +18,7 @@ export const STALE_TIMES = {
 
 export const QUERY_KEYS = {
   wallet: ['wallet'] as const,
+  dashboardSummary: ['dashboard', 'summary'] as const,
   transactions: ['transactions'] as const,
   usage: ['usage'] as const,
   topups: ['topups'] as const,

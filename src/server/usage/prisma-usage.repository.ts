@@ -3,9 +3,15 @@
 // Implements the UsageRepository interface (interface: src/server/usage/usage.repository.ts).
 
 import { prisma } from '@/lib/prisma'
-import type { Prisma, UsageLog, UsageStatus } from '@prisma/client'
+import { Prisma } from '@prisma/client'
+import type { UsageLog, UsageStatus } from '@prisma/client'
 import type { Cursor } from '@/server/db/pagination'
-import type { UsageLogCreateInput, UsageLogPage, UsageRepository } from './usage.repository'
+import type {
+  UsageLogCreateInput,
+  UsageLogPage,
+  UsagePeriodSummary,
+  UsageRepository,
+} from './usage.repository'
 
 export class PrismaUsageRepository implements UsageRepository {
   /** Create an immutable usage log. No update/delete paths exist (except status). */
@@ -70,6 +76,33 @@ export class PrismaUsageRepository implements UsageRepository {
       items: pageItems,
       nextCursor: hasMore && last ? { id: last.id, createdAt: last.createdAt } : null,
       hasMore,
+    }
+  }
+
+  /**
+   * Aggregate charged usage in [from, to). Only COMPLETED logs count
+   * (PENDING is in-flight, FAILED never charged, REFUNDED was reversed) —
+   * this keeps dashboard spend consistent with settled wallet debits.
+   */
+  async aggregatePeriod(
+    userId: string,
+    from: Date,
+    to: Date
+  ): Promise<UsagePeriodSummary> {
+    const result = await prisma.usageLog.aggregate({
+      where: {
+        userId,
+        status: 'COMPLETED',
+        createdAt: { gte: from, lt: to },
+      },
+      _count: { _all: true },
+      _sum: { totalTokens: true, userCost: true },
+    })
+
+    return {
+      requests: result._count._all,
+      tokens: result._sum.totalTokens ?? 0,
+      cost: result._sum.userCost ?? new Prisma.Decimal(0),
     }
   }
 
