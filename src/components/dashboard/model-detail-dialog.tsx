@@ -46,7 +46,7 @@ export function ModelDetailDialog({ model, open, onClose }: ModelDetailDialogPro
           </div>
           <div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Status</p>
-            <div>{renderModelStatus(model.status ?? (model.enabled ? 'active' : 'disabled'))}</div>
+            <div>{renderModelStatus(model.enabled ? 'active' : 'disabled')}</div>
           </div>
           <div>
             <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Provider</p>

@@ -85,6 +85,12 @@ const MODEL_STATUS: Record<string, number> = {
   [ModelErrorCode.PRICING_NOT_FOUND]: 404,
 }
 
+const ADMIN_STATUS: Record<string, number> = {
+  'NOT_FOUND': 404,
+  'CONFLICT': 409,
+  'VALIDATION_ERROR': 400,
+}
+
 /**
  * Map any domain error to the standard error envelope.
  * Fallback: 500 INTERNAL_SERVER_ERROR (never leaks stack traces).
@@ -152,6 +158,12 @@ export function mapApiError(error: unknown, requestId?: string): NextResponse {
     case 'AuthError':
       return jsonError(domainError.code ?? 'UNAUTHORIZED', domainError.message, {
         status: domainError.code === 'FORBIDDEN' ? 403 : 401,
+        requestId,
+      })
+
+    case 'AdminError':
+      return jsonError(domainError.code ?? 'ADMIN_ERROR', domainError.message, {
+        status: ADMIN_STATUS[domainError.code ?? ''] ?? 400,
         requestId,
       })
 

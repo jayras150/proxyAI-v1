@@ -96,10 +96,10 @@ export default function ModelsPage() {
                     <div className="min-w-0">
                       <CardTitle className="truncate">{model.display_name}</CardTitle>
                       <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                        {model.id}
+                        {(model as unknown as Record<string, unknown>).model_id as string ?? model.id}
                       </p>
                     </div>
-                    <ModelStatusBadge status={model.status} enabled={model.enabled} />
+                    <ModelStatusBadge status={model.enabled ? 'ACTIVE' : 'DISABLED'} enabled={model.enabled} />
                   </div>
                 </CardHeader>
                 <CardContent>

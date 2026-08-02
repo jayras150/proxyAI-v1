@@ -1,8 +1,8 @@
 # ProxyAI Project Tasks
 
-Last Updated: 2026-07-31
+Last Updated: 2026-08-02
 
-Latest commit: `09aaec0` — fix(wallet): protect against expired payments and key rate limits by user
+Latest commit: `main` — feat(admin-m3): AI platform management — models, pricing, providers, system config, feature flags
 
 ---
 
@@ -338,14 +338,91 @@ Backend gaps (additive, perlu approval saat milestone-nya): GET /v1/dashboard/su
 
 ### Admin Dashboard
 
-Status: 🔴 Not Started
+Status: 🟢 **M1 Foundation COMPLETED** (2026-08-01) | 🟢 **M2 Operations COMPLETED** (2026-08-01) | 🟢 **M3 AI Platform Management COMPLETED** (2026-08-02)
 
-Tasks:
-- [ ] Admin login with TOTP
-- [ ] User management
-- [ ] Wallet management
-- [ ] AI configuration
-- [ ] Audit logs
+### Milestone 3 — AI Platform Management (COMPLETED 2026-08-02)
+
+#### AI Models
+- [x] Model list with search, filter, cursor pagination
+- [x] Create model with capabilities (streaming, reasoning, vision, JSON mode, tool calling, embeddings, image gen)
+- [x] Edit/update model
+- [x] Enable/disable toggle
+- [x] Archive soft-delete
+- [x] Detail dialog with pricing info
+
+#### Pricing Management
+- [x] Pricing version list (cursor pagination)
+- [x] Current active version display
+- [x] Create pricing version (auto-increment version)
+- [x] Activate/archive versions
+- [x] Version history per model
+- [x] Version compare
+- [x] Cost calculator preview in billing page
+
+#### Provider Management
+- [x] Provider list from AiConfiguration
+- [x] Provider detail view
+- [x] Enable/disable toggle
+- [x] Priority and failover priority
+- [x] Health status, latency
+- [x] Capabilities display
+- [x] Supported models display
+- [x] API key status
+- [x] Test connection endpoint
+- [x] Timeout, retry count, circuit breaker config
+
+#### System Configuration
+- [x] Default provider and model
+- [x] Maintenance mode
+- [x] Registration toggle
+- [x] API key creation toggle
+- [x] Wallet negative balance policy
+- [x] Maximum negative balance
+- [x] Rate limits (per category)
+- [x] Streaming enabled/disabled
+- [x] Refund enabled/disabled
+- [x] Save configuration
+- [x] Reset to defaults
+
+#### Feature Flags
+- [x] Feature flag list with descriptions
+- [x] Enable/disable toggle
+- [x] Grouped view
+- [x] Dependency description
+- [x] Confirmation dialog on reset
+
+#### APIs Built
+- [x] GET/POST /api/admin/models
+- [x] GET/PATCH /api/admin/models/[id]
+- [x] PATCH /api/admin/models/[id]/toggle
+- [x] PATCH /api/admin/models/[id]/archive
+- [x] GET/POST /api/admin/pricing
+- [x] POST /api/admin/pricing/[id]/activate
+- [x] POST /api/admin/pricing/[id]/archive
+- [x] GET /api/admin/pricing/history
+- [x] GET /api/admin/pricing/compare
+- [x] GET /api/admin/providers
+- [x] GET/PATCH /api/admin/providers/[name]
+- [x] POST /api/admin/providers/[name]/test
+- [x] GET/PUT /api/admin/system
+- [x] POST /api/admin/system/reset
+- [x] GET /api/admin/feature-flags
+- [x] PATCH /api/admin/feature-flags/[name]
+
+#### Security & Verification
+- [x] RBAC with proper permissions (models.read/write, pricing.read/write, provider read/write, system read/write)
+- [x] Audit logging (writeAuditLog helper)
+- [x] Zod input validation
+- [x] Additive endpoints only (no contract changes)
+- [x] OpenAPI update (24 new admin endpoint docs)
+- [x] TanStack Query integration (4 new hooks)
+- [x] Skeleton/loading states
+- [x] Empty states
+- [x] Error states
+- [x] Responsive (desktop + mobile card views)
+- [x] Keyboard accessible (ARIA, focus)
+- [x] Build passes (69 routes)
+- [x] Admin tests pass (9/9)
 
 ### Security & Operations
 

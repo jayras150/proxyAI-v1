@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import { AdminShell } from '@/components/admin/admin-shell'
 import { useAdminUserDetail, useUpdateUserStatus } from '@/hooks/use-admin-users'
@@ -16,7 +16,7 @@ import { formatMoney, formatNumber, formatRelativeTime } from '@/lib/format'
 
 export default function AdminUserDetailPage() {
   const params = useParams()
-  const userId = paramString(s.id) as string
+  const userId = params.id as string
   const { data: user, isLoading, error } = useAdminUserDetail(userId)
   const updateStatus = useUpdateUserStatus()
   const creditWallet = useAdminCreditWallet()
@@ -65,8 +65,8 @@ export default function AdminUserDetailPage() {
             {user.wallet ? (
               <div className="space-y-3">
                 <div className="grid gap-4 sm:grid-cols-3">
-                  <div><p className="text-xs text-zinc-500">Balance</p><p className="text-xl font-bold tabular-nums">{formatMoney(user.wallet.balance, user.walleString(t.currency))}</p></div>
-                  <div><p className="text-xs text-zinc-500">Currency</p><p>{user.walleString(t.currency)}</p></div>
+                  <div><p className="text-xs text-zinc-500">Balance</p><p className="text-xl font-bold tabular-nums">{formatMoney(user.wallet.balance, user.wallet.currency)}</p></div>
+                  <div><p className="text-xs text-zinc-500">Currency</p><p>{user.wallet.currency}</p></div>
                   <div><p className="text-xs text-zinc-500">Status</p><Badge tone={user.wallet.status === 'ACTIVE' ? 'success' : user.wallet.status === 'PAYMENT_REQUIRED' ? 'warning' : 'danger'}>{user.wallet.status}</Badge></div>
                 </div>
                 <div className="flex gap-2">
@@ -104,7 +104,7 @@ export default function AdminUserDetailPage() {
         {/* Sessions */}
         {user.sessions.length > 0 && (<Card><CardHeader><CardTitle>Sessions</CardTitle></CardHeader>
           <CardContent><div className="divide-y divide-zinc-200 dark:divide-zinc-800">{user.sessions.map((s: Record<string, unknown>) => (
-            <div key={String(s.id)} className="flex justify-between py-2 text-sm"><span>{String(s.user_agent ?? "Unknown") ?? 'Unknown'}</span><span className="text-xs text-zinc-500">{String(s.ip_address ?? "�") ?? '—'}</span></div>
+            <div key={String(s.id)} className="flex justify-between py-2 text-sm"><span>{String(s.user_agent ?? 'Unknown')}</span><span className="text-xs text-zinc-500">{String(s.ip_address ?? '—')}</span></div>
           ))}</div></CardContent></Card>)}
       </div>
 

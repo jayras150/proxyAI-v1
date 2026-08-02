@@ -30,8 +30,8 @@ export default function AdminRefundsPage() {
   const rejectMutation = useRejectRefund()
   const items = data?.items ?? []
 
-  const handlePrev = useCallback(() => { const prev = cursors[cursors.length - 2] ?? null; setCursors((c) => c.slice(0, -1)); setCursor(prev) }, [cursors])
-  const handleNext = useCallback(() => { if (data?.next_cursor) { setCursors((c) => [...c, cursor]); setCursor(data.next_cursor) } }, [data?.next_cursor, cursor])
+  const handlePrev = useCallback(() => { const prev = cursors.length >= 2 ? cursors[cursors.length - 2]! : null; setCursors(cursors.slice(0, -1)); setCursor(prev) }, [cursors])
+  const handleNext = useCallback(() => { if (data?.next_cursor) { setCursors([...cursors, data.next_cursor]); setCursor(data.next_cursor) } }, [data?.next_cursor, cursors])
 
   const handleApprove = useCallback(async (id: string) => { try { await approveMutation.mutateAsync(id); setDetail(null) } catch {} }, [approveMutation])
   const handleReject = useCallback(async (id: string) => { try { await rejectMutation.mutateAsync({ id, reason: rejectReason }); setDetail(null); setRejectReason('') } catch {} }, [rejectMutation, rejectReason])

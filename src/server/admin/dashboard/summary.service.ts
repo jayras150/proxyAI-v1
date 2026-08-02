@@ -47,6 +47,7 @@ export class AdminDashboardService {
       usageMonth,
       usagePrevMonth,
       walletAgg,
+      recentActivities,
     ] = await Promise.all([
       prisma.user.count(),
 
