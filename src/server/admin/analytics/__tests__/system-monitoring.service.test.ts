@@ -16,17 +16,21 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
+/** Loose mock accessor: vi.mock replaces the module at runtime; this cast
+ * keeps TypeScript on the vitest Mock surface instead of Prisma's types. */
+import type { Mock } from 'vitest'
+const mockOf = (target: unknown): Mock => target as unknown as Mock
 
 beforeEach(() => {
   vi.clearAllMocks()
 
-  prisma.$queryRaw.mockResolvedValue([{ '?column?': 1 }])
-  prisma.aiConfiguration.findMany.mockResolvedValue([
+  mockOf(prisma.$queryRaw).mockResolvedValue([{ '?column?': 1 }])
+  mockOf(prisma.aiConfiguration.findMany).mockResolvedValue([
     { key: 'provider.deepseek.enabled', value: true },
     { key: 'provider.deepseek.base_url', value: 'https://api.deepseek.com' },
   ])
 
-  prisma.usageLog.groupBy.mockImplementation((args: { by: string[] }) => {
+  mockOf(prisma.usageLog.groupBy).mockImplementation((args: { by: string[] }) => {
     if (args.by[0] === 'status') {
       return Promise.resolve([
         { status: 'COMPLETED', _count: { _all: 90 }, _avg: { latencyMs: 400 } },
@@ -37,7 +41,7 @@ beforeEach(() => {
       { provider: 'deepseek', _count: { _all: 50 }, _sum: { userCost: new Prisma.Decimal(0) }, _avg: { latencyMs: 400 } },
     ])
   })
-  prisma.usageLog.count.mockResolvedValue(3600)
+  mockOf(prisma.usageLog.count).mockResolvedValue(3600)
 })
 
 describe('SystemMonitoringService', () => {
@@ -63,7 +67,7 @@ describe('SystemMonitoringService', () => {
   })
 
   it('reports down status when the database check fails', async () => {
-    prisma.$queryRaw.mockRejectedValue(new Error('connection refused'))
+    mockOf(prisma.$queryRaw).mockRejectedValue(new Error('connection refused'))
 
     const service = new SystemMonitoringService()
     const result = await service.getMonitoring()
@@ -75,7 +79,7 @@ describe('SystemMonitoringService', () => {
   })
 
   it('reports providers as not_configured when none exist', async () => {
-    prisma.aiConfiguration.findMany.mockResolvedValue([])
+    mockOf(prisma.aiConfiguration.findMany).mockResolvedValue([])
 
     const service = new SystemMonitoringService()
     const result = await service.getMonitoring()

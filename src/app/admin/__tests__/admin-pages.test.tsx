@@ -21,6 +21,7 @@ vi.mock('@/lib/theme', () => ({
 }))
 
 import { useAdminAuth } from '@/hooks/use-admin-auth'
+import type { AdminPermission } from '@/lib/admin/permissions'
 import AdminLoginPage from '@/app/admin/login/page'
 import AdminPage from '@/app/admin/page'
 
@@ -40,7 +41,7 @@ const mockSuperAdmin = {
   createdAt: '2026-01-01T00:00:00.000Z',
   totp_enabled: false,
   totp_verified: false,
-  permissions: ['admin:access', 'admin:users:read', 'admin:wallet:read', 'admin:billing:read'],
+  permissions: ['admin:access', 'admin:users:read', 'admin:wallet:read', 'admin:billing:read'] as AdminPermission[],
 }
 
 const mockAdminTotpNotVerified = {
@@ -75,7 +76,7 @@ describe('Admin Dashboard Page', () => {
   })
 
   it('renders dashboard title', async () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     // Dashboard text appears in sidebar nav items
     const dashboards = await screen.findAllByText('Dashboard')
@@ -83,39 +84,39 @@ describe('Admin Dashboard Page', () => {
   })
 
   it('has nav labels in document', async () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     // Check that it renders without crashing
     expect(screen.getByLabelText('Logout')).toBeTruthy()
   })
 
   it('shows loading skeleton', () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: undefined, isLoading: true, error: null })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: undefined, isLoading: true, error: null } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     const skeletons = document.querySelectorAll('[role="status"]')
     expect(skeletons.length).toBeGreaterThan(0)
   })
 
   it('shows error state on auth failure', () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: undefined, isLoading: false, error: { message: 'Auth failed' } })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: undefined, isLoading: false, error: new Error('Auth failed') } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     expect(screen.getByText('Authentication Error')).toBeTruthy()
   })
 
   it('shows TOTP verification when needed', () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: mockAdminTotpNotVerified, isLoading: false, error: null })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: mockAdminTotpNotVerified, isLoading: false, error: null } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     expect(screen.getByText('Two-Factor Authentication')).toBeTruthy()
   })
 
   it('shows logout button', () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     expect(screen.getByLabelText('Logout')).toBeTruthy()
   })
 
   it('shows theme toggle', () => {
-    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null })
+    vi.mocked(useAdminAuth).mockReturnValue({ data: mockSuperAdmin, isLoading: false, error: null } as never)
     render(<AdminPage />, { wrapper: createWrapper() })
     expect(screen.getByLabelText(/switch to/i)).toBeTruthy()
   })

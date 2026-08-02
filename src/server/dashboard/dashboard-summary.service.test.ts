@@ -225,7 +225,14 @@ describe('DashboardSummaryService', () => {
     }
     fakes.apiKeyRepository.active = 2
 
-    const summary = await buildService(fakes, async () => ({ id: 'deepseek', healthy: false, latency_ms: null })).getSummary(
+    const summary = await buildService(
+      fakes,
+      (async () => ({ id: 'deepseek', healthy: false, latency_ms: null })) as unknown as () => Promise<{
+        id: string
+        healthy: boolean
+        latency_ms: number
+      }>
+    ).getSummary(
       'user-1',
       NOW
     )

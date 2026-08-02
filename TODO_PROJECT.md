@@ -2,7 +2,7 @@
 
 Last Updated: 2026-08-02
 
-Latest commit: `main` — feat(admin-m4): monitoring & analytics — system health, business/financial/usage/provider analytics, logs, export
+Latest commit: `main` — feat(admin-m5): production readiness review — atomic admin wallet ops, atomic refund approval, tsc-clean test suite
 
 ---
 
@@ -338,7 +338,30 @@ Backend gaps (additive, perlu approval saat milestone-nya): GET /v1/dashboard/su
 
 ### Admin Dashboard
 
-Status: 🟢 **M1 Foundation COMPLETED** (2026-08-01) | 🟢 **M2 Operations COMPLETED** (2026-08-01) | 🟢 **M3 AI Platform Management COMPLETED** (2026-08-02) | 🟢 **M4 Monitoring & Analytics COMPLETED** (2026-08-02)
+Status: 🟢 **M1-M5 COMPLETED (2026-08-02)** — **APPROVED FOR PRODUCTION (CLOSED)**
+
+### Milestone 5 — Production Readiness Review (COMPLETED 2026-08-02)
+
+#### Verdict
+- [x] **APPROVED FOR PRODUCTION** — audit M1-M4 menyeluruh, tanpa fitur baru / tanpa refactor besar
+
+#### P1 Fixes
+- [x] **Wallet credit/debit race:** read-modify-write → atomic increment (credit) & conditional decrement (debit); overdraw mustahil; ledger balanceBefore/After akurat; duplicate idempotency key → 409 bersih
+- [x] **Refund approve flow:** `RefundService.adminApprove()` (additive) — proses request existing dalam SATU tx (replay gate → credit → usage REFUNDED → request COMPLETED); route approve jadi adapter tipis; recovery request stuck APPROVED; idempotent per request id
+
+#### P2 Fixes
+- [x] logApiRequest (request_id/correlation_id/admin_id/wallet_id/transaction_id/status_code/duration_ms) di 4 route finansial (wallet credit/debit, refund approve/reject)
+- [x] Duplicate idempotency key → 409 CONFLICT (bukan 500)
+
+#### Verification
+- [x] 12 test baru (6 admin-wallet service + 6 adminApprove) — total suite lulus
+- [x] tsc --noEmit bersih di SELURUH project (11 file test lama diperbaiki typing-nya: vi.mocked/mockOf, FakeUsageRepository.aggregatePeriod, AdminProfile mocks)
+- [x] lint 0 errors · build ✅ · OpenAPI valid ✅
+
+#### Tech Debt (P3, dicatat)
+- [ ] Route baca M2 (users/audit/refunds list) pakai Prisma langsung di route
+- [ ] Admin read endpoints belum logApiRequest per-request (kecuali 4 route finansial)
+- [ ] timeout_count/retry_count provider analytics = null (V1 gateway tidak persist failure reason)
 
 ### Milestone 4 — Monitoring & Analytics (COMPLETED 2026-08-02)
 

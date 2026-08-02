@@ -2,7 +2,7 @@
 
 Last Updated: 2026-08-02
 
-Commit: `latest` + `feat(admin-m4): monitoring & analytics — system health, business/financial/usage/provider analytics, logs, export`
+Commit: `latest` + `feat(admin-m5): production readiness review — atomic admin wallet ops, atomic refund approval, tsc-clean test suite`
 
 ## Overall Progress
 
@@ -15,6 +15,7 @@ Current Phase:
 - ✅ User Dashboard — MODULE CLOSED (2026-08-01)
 - ✅ Admin Dashboard Milestone 3 — AI Platform Management (COMPLETED 2026-08-02)
 - ✅ Admin Dashboard Milestone 4 — Monitoring & Analytics (COMPLETED 2026-08-02)
+- ✅ Admin Dashboard Milestone 5 — Production Readiness Review (COMPLETED 2026-08-02) — **APPROVED FOR PRODUCTION**
 
 ---
 
@@ -27,6 +28,7 @@ Current Phase:
 5. ✅ User Dashboard — MODULE CLOSED (2026-08-01)
 6. ✅ Admin Dashboard Milestone 3 — AI Platform Management (COMPLETED 2026-08-02)
 7. ✅ Admin Dashboard Milestone 4 — Monitoring & Analytics (COMPLETED 2026-08-02)
+8. ✅ Admin Dashboard Milestone 5 — Production Readiness Review (COMPLETED 2026-08-02) — APPROVED FOR PRODUCTION
 
 ---
 
@@ -1090,6 +1092,52 @@ Audit menyeluruh (tanpa fitur baru / tanpa perubahan arsitektur). Baseline: 262 
 
 ---
 
+## Admin Dashboard — Milestone 5: Production Readiness Review (2026-08-02)
+
+### Verdict: ✅ **APPROVED FOR PRODUCTION — MODULE CLOSED**
+
+Audit menyeluruh M1–M4 (tanpa fitur baru / tanpa refactor besar / tanpa perubahan arsitektur). Baseline M5: 549 tests → 557 tests, tsc ✅, lint ✅ 0 errors, build ✅, OpenAPI valid ✅.
+
+### P1 Fixed — Admin wallet credit/debit lost-update race
+
+- **Issue:** `AdminWalletService` melakukan read-modify-write (`findUnique` → `update`). Dua debit admin konkuren bisa sama-sama lolos cek `balance >= amount` (stale read) lalu men-drive saldo negatif; balanceBefore di ledger jadi tidak akurat (money leak phantom).
+- **Fix:** kredit kini atomic increment; debit kini conditional decrement (`updateMany where balance >= amount`) — cek & write jadi satu statement, overdraw mustahil. Row lock serializes concurrent writers sehingga read-back balanceAfter akurat. `reference @unique` tetap mencegah double-credit via idempotency key.
+- **Tests (6):** credit atomic, debit conditional, insufficient balance, concurrent-debit overdraft protection, NOT_FOUND, duplicate idempotency → 409.
+
+### P1 Fixed — Admin refund approve flow broken
+
+- **Issue:** route approve lama: mark APPROVED (di luar tx) → `refundService.refund()` → `findByUsageLogId` menemukan request yang sama → selalu `ALREADY_REFUNDED` (409); wallet tidak pernah di-credit; request stuck APPROVED selamanya. Tidak ada test untuk alur ini.
+- **Fix:** `RefundService.adminApprove()` (additive, billing service) — memproses request yang SUDAH ADA dalam SATU transaction: replay gate idempotency (admin_approve_<id>) → status gate (REQUESTED/APPROVED, recovery utk row stuck) → credit wallet → usage REFUNDED → request COMPLETED (optimistic lock) → events setelah commit. Route approve ditulis ulang menjadi adapter tipis.
+- **Tests (6):** approve atomik, idempotent replay (tanpa double credit), recovery stuck APPROVED, terminal status ditolak, rollback penuh saat gagal, concurrent approval → tepat 1 credit.
+
+### P2 Fixed — Observability + idempotency errors
+
+- [x] `logApiRequest` (request_id/correlation_id/admin_id/wallet_id/transaction_id/status_code/duration_ms) ditambahkan ke 4 route finansial: wallet credit, wallet debit, refund approve, refund reject.
+- [x] Duplicate idempotency key kini 409 CONFLICT yang jelas (bukan 500 opaque).
+- [x] Error P2002 dipetakan di service (bukan bocor ke mapApiError).
+
+### P3 — Tech Debt (dicatat, tidak diperbaiki — sengaja)
+
+- [ ] Route baca M2 (users, audit, refunds list) masih pakai Prisma langsung — konsisten tapi belum service-layer (bukan bug; refactor ditunda per instruksi milestone).
+- [ ] Admin read endpoints selain 4 route finansial belum `logApiRequest` per-request (audit log sudah menangkap aksi admin; request_id ada di tiap response).
+- [ ] `timeout_count` / `retry_count` di provider analytics = null (V1 gateway tidak persist failure reason — didokumentasikan sejak M4).
+
+### Audit Results (M1–M4)
+
+- **Architecture:** Route → Service → Repository → Prisma untuk M3/M4; hooks tipis; tidak ada Prisma di UI; tidak ada fetch tersebar; tidak ada `any`; tidak ada console.log/TODO/FIXME (grep-verified).
+- **Security:** semua 38 endpoint admin RBAC-gated (`requireAdminPermission`); tidak ada endpoint admin tanpa permission; login+TOTP; self-suspend & SUPER_ADMIN-suspend diblokir; rate limit per-admin; tidak ada secret di response.
+- **Financial:** wallet credit/debit atomic + idempotent; refund approve atomik + idempotent; reject guarded; audit trail lengkap; negative balance tidak mungkin via admin debit (conditional decrement); PAYMENT_REQUIRED reactivation via credit.
+- **Analytics:** semua angka dari backend (aggregates Prisma); tidak ada angka hardcoded/fake; charts hanya mem-format.
+- **Performance:** cursor pagination + limit+1; tidak ada N+1 (groupBy/aggregate); charts lazy-loaded; auto-refresh pause saat tab hidden; indexes lengkap.
+- **Accessibility:** keyboard/ARIA/focus/dialogs/reduced-motion/contrast; charts punya sr-only text summary.
+- **OpenAPI:** seluruh 38 endpoint admin terdokumentasi; schema valid (7/7 test).
+- **Tests:** 561 total (12 baru di M5: 6 admin-wallet service + 6 adminApprove) — semua pass; tsc kini bersih di SELURUH project (11 file test lama diperbaiki typing-nya).
+- **Observability:** request_id di semua response; audit log semua mutasi; logApiRequest di 4 route finansial.
+
+> ✅ Milestone 5 COMPLETED — **Admin Dashboard APPROVED FOR PRODUCTION (CLOSED)**.
+
+---
+
 # In Progress
 
 ## Authentication
@@ -1112,11 +1160,16 @@ Dashboard
 Status:
 ✅ USER DASHBOARD — MODULE CLOSED (2026-08-01)
 
+Admin Dashboard
+
+Status:
+✅ M1-M5 COMPLETED — **APPROVED FOR PRODUCTION (CLOSED 2026-08-02)**
+
 ---
 
 # Next Task
 
-**Admin Dashboard** — menunggu instruksi (jangan mulai sebelum approval).
+Menunggu instruksi (jangan mulai modul baru sebelum approval).
 
 ---
 

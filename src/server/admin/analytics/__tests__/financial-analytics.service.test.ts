@@ -17,26 +17,30 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
+/** Loose mock accessor: vi.mock replaces the module at runtime; this cast
+ * keeps TypeScript on the vitest Mock surface instead of Prisma's types. */
+import type { Mock } from 'vitest'
+const mockOf = (target: unknown): Mock => target as unknown as Mock
 
 beforeEach(() => {
   vi.clearAllMocks()
 
-  prisma.wallet.aggregate.mockResolvedValue({
+  mockOf(prisma.wallet.aggregate).mockResolvedValue({
     _sum: { balance: new Prisma.Decimal('1000.000000') },
   } as never)
-  prisma.wallet.findMany.mockResolvedValue([
+  mockOf(prisma.wallet.findMany).mockResolvedValue([
     { balance: new Prisma.Decimal('-2.500000') },
     { balance: new Prisma.Decimal('-1.000000') },
   ])
-  prisma.transaction.aggregate.mockResolvedValue({
+  mockOf(prisma.transaction.aggregate).mockResolvedValue({
     _count: { _all: 40 },
     _sum: { amount: new Prisma.Decimal('25.000000') },
   } as never)
-  prisma.refundRequest.aggregate.mockResolvedValue({
+  mockOf(prisma.refundRequest.aggregate).mockResolvedValue({
     _count: { _all: 3 },
     _sum: { amount: new Prisma.Decimal('1.500000') },
   } as never)
-  prisma.usageLog.aggregate.mockResolvedValue({
+  mockOf(prisma.usageLog.aggregate).mockResolvedValue({
     _sum: { providerCost: new Prisma.Decimal('8.000000'), userCost: new Prisma.Decimal('25.000000') },
   } as never)
 })
@@ -71,16 +75,16 @@ describe('FinancialAnalyticsService', () => {
   })
 
   it('returns zeroed values when no data', async () => {
-    prisma.wallet.aggregate.mockResolvedValue({ _sum: { balance: null } } as never)
-    prisma.wallet.findMany.mockResolvedValue([])
-    prisma.usageLog.aggregate.mockResolvedValue({
+    mockOf(prisma.wallet.aggregate).mockResolvedValue({ _sum: { balance: null } } as never)
+    mockOf(prisma.wallet.findMany).mockResolvedValue([])
+    mockOf(prisma.usageLog.aggregate).mockResolvedValue({
       _sum: { providerCost: null, userCost: null },
     } as never)
-    prisma.refundRequest.aggregate.mockResolvedValue({
+    mockOf(prisma.refundRequest.aggregate).mockResolvedValue({
       _count: { _all: 0 },
       _sum: { amount: null },
     } as never)
-    prisma.transaction.aggregate.mockResolvedValue({
+    mockOf(prisma.transaction.aggregate).mockResolvedValue({
       _count: { _all: 0 },
       _sum: { amount: null },
     } as never)

@@ -8,16 +8,21 @@ import { mapApiError } from '@/lib/api-error-mapper'
 import { enforceRateLimit } from '@/lib/rate-limit/helpers'
 import { RATE_LIMITS } from '@/config/rate-limits'
 import { requireAdminPermission } from '@/lib/admin/guard'
+import { getCorrelationId, logApiRequest } from '@/lib/api-request'
 import { z } from 'zod'
 
 const rejectSchema = z.object({
   reason: z.string().max(500).optional(),
 })
 
+const ENDPOINT = 'POST /api/admin/refunds/:id/reject'
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const startedAt = Date.now()
+  const correlationId = getCorrelationId(request)
   try {
     const admin = requireAdminPermission(request, 'admin:refund:reject')
     const rate = await enforceRateLimit(request, { ...RATE_LIMITS.aiRead, identity: admin.sub })
@@ -29,10 +34,26 @@ export async function POST(
 
     const refund = await prisma.refundRequest.findUnique({ where: { id } })
     if (!refund) {
-      return jsonError('NOT_FOUND', 'Refund request not found.', { status: 404 })
+      const response = jsonError('NOT_FOUND', 'Refund request not found.', { status: 404 })
+      logApiRequest({
+        endpoint: ENDPOINT,
+        correlationId,
+        userId: admin.sub,
+        statusCode: response.status,
+        durationMs: Date.now() - startedAt,
+      })
+      return response
     }
     if (refund.status !== 'REQUESTED') {
-      return jsonError('CONFLICT', 'Refund request is not in REQUESTED status.', { status: 409 })
+      const response = jsonError('CONFLICT', 'Refund request is not in REQUESTED status.', { status: 409 })
+      logApiRequest({
+        endpoint: ENDPOINT,
+        correlationId,
+        userId: admin.sub,
+        statusCode: response.status,
+        durationMs: Date.now() - startedAt,
+      })
+      return response
     }
 
     await prisma.refundRequest.update({
@@ -54,8 +75,23 @@ export async function POST(
       },
     })
 
-    return jsonSuccess({ message: 'Refund request rejected.' })
+    const response = jsonSuccess({ message: 'Refund request rejected.' })
+    logApiRequest({
+      endpoint: ENDPOINT,
+      correlationId,
+      userId: admin.sub,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+    })
+    return response
   } catch (error) {
-    return mapApiError(error)
+    const response = mapApiError(error)
+    logApiRequest({
+      endpoint: ENDPOINT,
+      correlationId,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+    })
+    return response
   }
 }

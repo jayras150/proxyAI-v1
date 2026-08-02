@@ -8,6 +8,7 @@ import { enforceRateLimit } from '@/lib/rate-limit/helpers'
 import { RATE_LIMITS } from '@/config/rate-limits'
 import { requireAdminPermission } from '@/lib/admin/guard'
 import { AdminWalletService } from '@/server/admin/wallet/admin-wallet.service'
+import { getCorrelationId, logApiRequest } from '@/lib/api-request'
 import { z } from 'zod'
 
 const creditSchema = z.object({
@@ -19,7 +20,11 @@ const creditSchema = z.object({
 
 const walletService = new AdminWalletService()
 
+const ENDPOINT = 'POST /api/admin/wallet/credit'
+
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now()
+  const correlationId = getCorrelationId(request)
   try {
     const admin = requireAdminPermission(request, 'admin:wallet:credit')
     const rate = await enforceRateLimit(request, { ...RATE_LIMITS.aiRead, identity: admin.sub })
@@ -28,7 +33,15 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const parsed = creditSchema.safeParse(body)
     if (!parsed.success) {
-      return jsonError('VALIDATION_ERROR', parsed.error.issues[0].message, { status: 400 })
+      const response = jsonError('VALIDATION_ERROR', parsed.error.issues[0].message, { status: 400 })
+      logApiRequest({
+        endpoint: ENDPOINT,
+        correlationId,
+        userId: admin.sub,
+        statusCode: response.status,
+        durationMs: Date.now() - startedAt,
+      })
+      return response
     }
 
     const result = await walletService.creditWallet(
@@ -51,8 +64,25 @@ export async function POST(request: NextRequest) {
       },
     })
 
-    return jsonSuccess(result, { status: 201 })
+    const response = jsonSuccess(result, { status: 201 })
+    logApiRequest({
+      endpoint: ENDPOINT,
+      correlationId,
+      userId: admin.sub,
+      walletId: parsed.data.wallet_id,
+      transactionId: result.transaction_id,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+    })
+    return response
   } catch (error) {
-    return mapApiError(error)
+    const response = mapApiError(error)
+    logApiRequest({
+      endpoint: ENDPOINT,
+      correlationId,
+      statusCode: response.status,
+      durationMs: Date.now() - startedAt,
+    })
+    return response
   }
 }

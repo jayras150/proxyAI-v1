@@ -15,11 +15,15 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
+/** Loose mock accessor: vi.mock replaces the module at runtime; this cast
+ * keeps TypeScript on the vitest Mock surface instead of Prisma's types. */
+import type { Mock } from 'vitest'
+const mockOf = (target: unknown): Mock => target as unknown as Mock
 
 beforeEach(() => {
   vi.clearAllMocks()
 
-  prisma.usageLog.aggregate.mockResolvedValue({
+  mockOf(prisma.usageLog.aggregate).mockResolvedValue({
     _count: { _all: 10 },
     _sum: {
       promptTokens: 5000,
@@ -32,7 +36,7 @@ beforeEach(() => {
     _avg: { latencyMs: 850 },
   } as never)
 
-  prisma.usageLog.groupBy.mockImplementation((args: { by: string[] }) => {
+  mockOf(prisma.usageLog.groupBy).mockImplementation((args: { by: string[] }) => {
     if (args.by.length === 2) {
       // provider + status
       return Promise.resolve([
@@ -52,7 +56,7 @@ beforeEach(() => {
     ])
   })
 
-  prisma.$queryRaw.mockResolvedValue([
+  mockOf(prisma.$queryRaw).mockResolvedValue([
     { day: '2026-08-02', requests: 10, tokens: 9000, cost: new Prisma.Decimal('0.250000') },
   ])
 })
@@ -98,13 +102,13 @@ describe('UsageAnalyticsService', () => {
   })
 
   it('returns zeroed totals when there is no data', async () => {
-    prisma.usageLog.aggregate.mockResolvedValue({
+    mockOf(prisma.usageLog.aggregate).mockResolvedValue({
       _count: { _all: 0 },
       _sum: { promptTokens: 0, completionTokens: 0, cachedTokens: 0, totalTokens: 0, providerCost: new Prisma.Decimal(0), userCost: new Prisma.Decimal(0) },
       _avg: { latencyMs: null },
     } as never)
-    prisma.usageLog.groupBy.mockResolvedValue([])
-    prisma.$queryRaw.mockResolvedValue([])
+    mockOf(prisma.usageLog.groupBy).mockResolvedValue([])
+    mockOf(prisma.$queryRaw).mockResolvedValue([])
 
     const service = new UsageAnalyticsService()
     const result = await service.getAnalytics({ range: 'today' })

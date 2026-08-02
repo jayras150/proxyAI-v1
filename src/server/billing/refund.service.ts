@@ -119,12 +119,191 @@ export class RefundService {
 
   // ─── Internals ────────────────────────────────────────────────────────
 
+  /**
+   * Admin approval path — completes an EXISTING refund request atomically.
+   *
+   * The admin refunds workflow creates a RefundRequest row (REQUESTED) that
+   * the admin then approves. Unlike refund(), this does NOT create a new
+   * request — it credits the wallet, marks the usage REFUNDED and completes
+   * the existing row in ONE transaction. Idempotent per request id
+   * (`admin_approve_<refundRequestId>`), so retries replay without a second
+   * credit, and concurrent approvals on the same request serialize via the
+   * idempotency reservation.
+   */
+  async adminApprove(input: {
+    refundRequestId: string
+    adminId: string
+    requestId?: string
+    ipAddress?: string
+    userAgent?: string
+  }): Promise<RefundResult> {
+    try {
+      return await this.doAdminApprove(input)
+    } catch (error) {
+      if (error instanceof RefundError || error instanceof IdempotencyError) {
+        throw error
+      }
+      if (error instanceof WalletError) {
+        throw this.mapWalletError(error)
+      }
+      throw new RefundError(RefundErrorCode.REFUND_FAILED, 'Refund approval failed unexpectedly.')
+    }
+  }
+
+  private async doAdminApprove(input: {
+    refundRequestId: string
+    adminId: string
+    requestId?: string
+    ipAddress?: string
+    userAgent?: string
+  }): Promise<RefundResult> {
+    const outcome = await this.transactionManager.withTransaction<TxOutcome>(async (tx) => {
+      // 0. Load the existing request (needed for the idempotency scope).
+      const existing = await this.refundRepository.findById(input.refundRequestId)
+      if (!existing) {
+        throw new RefundError(
+          RefundErrorCode.USAGE_NOT_FOUND,
+          `Refund request ${input.refundRequestId} not found.`
+        )
+      }
+
+      // 1. Idempotency reserve FIRST (replay gate) — a retry after success
+      //    returns the stored result even though the request is COMPLETED.
+      const reserved = await this.reserveInsideTransaction(tx, {
+        key: `admin_approve_${input.refundRequestId}`,
+        scope: REFUND_IDEMPOTENCY_SCOPE,
+        userId: existing.userId,
+        request: {
+          refundRequestId: input.refundRequestId,
+          adminId: input.adminId,
+        },
+      })
+      if (reserved.state === 'replay') {
+        if (!reserved.response) {
+          throw new RefundError(
+            RefundErrorCode.REFUND_FAILED,
+            'Replayed refund has no stored result.'
+          )
+        }
+        return { replayed: true, stored: reserved.response as unknown as RefundResult }
+      }
+
+      // 2. Status gate (after the replay gate). APPROVED covers rows stuck
+      //    by the pre-M5 two-step flow.
+      if (existing.status !== 'REQUESTED' && existing.status !== 'APPROVED') {
+        throw new RefundError(
+          RefundErrorCode.REFUND_FAILED,
+          `Refund request is in status ${existing.status}, not REQUESTED/APPROVED.`
+        )
+      }
+
+      // 2. Validate the usage log.
+      const usage = await this.usageRepository.findById(existing.usageLogId)
+      if (!usage) {
+        throw new RefundError(
+          RefundErrorCode.USAGE_NOT_FOUND,
+          `Usage log ${existing.usageLogId} not found.`
+        )
+      }
+      this.assertEligible(usage, existing.userId)
+
+      // 3. Credit the wallet (creates Transaction(REFUND) in this tx).
+      const credit = await this.walletService.creditInTransaction(
+        tx,
+        existing.userId,
+        Money.fromString(usage.userCost.toString(), usage.currency as CurrencyCode),
+        {
+          reference: `refund_admin_${input.refundRequestId}`,
+          type: 'REFUND',
+          requestId: input.requestId,
+          providerReference: existing.usageLogId,
+          description: `Refund for usage ${existing.usageLogId} (admin approval)`,
+          createdBy: `admin:${input.adminId}`,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+        }
+      )
+
+      // 4. UsageLog COMPLETED → REFUNDED (guarded).
+      const refundedLog = await this.usageRepository.markRefunded(existing.usageLogId, tx)
+      if (!refundedLog) {
+        throw new RefundError(
+          RefundErrorCode.USAGE_NOT_ELIGIBLE,
+          `Usage log ${existing.usageLogId} is not COMPLETED (cannot be refunded).`
+        )
+      }
+
+      // 5. RefundRequest → COMPLETED (optimistic-lock guarded, once).
+      const completed = await this.refundRepository.markCompleted(
+        existing.id,
+        credit.transaction.id,
+        existing.version,
+        tx,
+        `admin:${input.adminId}`
+      )
+      if (!completed) {
+        throw new RefundError(
+          RefundErrorCode.REFUND_FAILED,
+          'Refund request could not be completed (version conflict).'
+        )
+      }
+
+      const result: RefundResult = {
+        refundRequestId: completed.id,
+        usageLogId: existing.usageLogId,
+        transactionId: credit.transaction.id,
+        walletId: credit.wallet.id,
+        userId: existing.userId,
+        amount: credit.transaction.amount.toFixed(6),
+        currency: credit.transaction.currency,
+        usageStatus: refundedLog.status,
+        refundStatus: completed.status,
+        walletBalanceAfter: prismaToMoney(
+          credit.wallet.balance,
+          credit.wallet.currency as CurrencyCode
+        ).toString(),
+        replayed: false,
+      }
+
+      // 6. Idempotency result stored inside the same transaction.
+      await this.idempotencyService.completeInTransaction(tx, reserved.id, result)
+
+      return { replayed: false, result }
+    })
+
+    if (outcome.replayed) {
+      return { ...outcome.stored, replayed: true }
+    }
+
+    // Events ONLY after the commit succeeded.
+    const eventInput: RefundInput = {
+      usageLogId: outcome.result.usageLogId,
+      userId: outcome.result.userId,
+      idempotencyKey: `admin_approve_${input.refundRequestId}`,
+      requestId: input.requestId,
+      requestedBy: `admin:${input.adminId}`,
+    }
+    this.emitRefunded(eventInput, outcome.result)
+    this.emitWalletCredited(eventInput, outcome.result)
+    return outcome.result
+  }
+
   private async doRefund(input: RefundInput): Promise<RefundResult> {
     // ONE transaction: refund is all-or-nothing. The idempotency reserve runs
     // FIRST so a retry replays the stored result even though the usage log is
     // already REFUNDED; eligibility is validated after the replay gate.
     const outcome = await this.transactionManager.withTransaction<TxOutcome>(async (tx) => {
-      const reserved = await this.reserveInsideTransaction(tx, input)
+      const reserved = await this.reserveInsideTransaction(tx, {
+        key: input.idempotencyKey,
+        scope: REFUND_IDEMPOTENCY_SCOPE,
+        userId: input.userId,
+        request: {
+          usageLogId: input.usageLogId,
+          userId: input.userId,
+          reason: input.reason ?? null,
+          requestId: input.requestId ?? null,
+        },
+      })
       if (reserved.state === 'replay') {
         if (!reserved.response) {
           throw new RefundError(
@@ -266,17 +445,20 @@ export class RefundService {
   }
 
   /** Reserve the idempotency key inside the caller's transaction. */
-  private async reserveInsideTransaction(tx: TxClient, input: RefundInput): Promise<ReserveResult> {
+  private async reserveInsideTransaction(
+    tx: TxClient,
+    input: {
+      key: string
+      scope: string
+      userId: string
+      request: Record<string, unknown>
+    }
+  ): Promise<ReserveResult> {
     const reserveInput = {
-      key: input.idempotencyKey,
-      scope: REFUND_IDEMPOTENCY_SCOPE,
+      key: input.key,
+      scope: input.scope,
       userId: input.userId,
-      request: {
-        usageLogId: input.usageLogId,
-        userId: input.userId,
-        reason: input.reason ?? null,
-        requestId: input.requestId ?? null,
-      },
+      request: input.request,
     }
 
     try {

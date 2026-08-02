@@ -21,6 +21,10 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
+/** Loose mock accessor: vi.mock replaces the module at runtime; this cast
+ * keeps TypeScript on the vitest Mock surface instead of Prisma's types. */
+import type { Mock } from 'vitest'
+const mockOf = (target: unknown): Mock => target as unknown as Mock
 
 const BASE_FILTERS = { range: 'today' as const }
 
@@ -28,13 +32,13 @@ beforeEach(() => {
   vi.clearAllMocks()
 
   // usageLog.aggregate — used 4× (window, today, yesterday, month)
-  prisma.usageLog.aggregate.mockResolvedValue({
+  mockOf(prisma.usageLog.aggregate).mockResolvedValue({
     _count: { _all: 10 },
     _sum: { userCost: new Prisma.Decimal('5.000000') },
   } as never)
 
   // usageLog.groupBy — status breakdown, top users, active users
-  prisma.usageLog.groupBy.mockImplementation((args: { by: string[]; _count?: boolean }) => {
+  mockOf(prisma.usageLog.groupBy).mockImplementation((args: { by: string[]; _count?: boolean }) => {
     if (args.by[0] === 'status') {
       return Promise.resolve([
         { status: 'COMPLETED', _count: { _all: 8 } },
@@ -48,20 +52,20 @@ beforeEach(() => {
     ])
   })
 
-  prisma.user.count.mockResolvedValue(3)
-  prisma.user.findMany.mockResolvedValue([
+  mockOf(prisma.user.count).mockResolvedValue(3)
+  mockOf(prisma.user.findMany).mockResolvedValue([
     { id: 'user-1', email: 'alice@test.com' },
     { id: 'user-2', email: 'bob@test.com' },
   ])
-  prisma.transaction.aggregate.mockResolvedValue({
+  mockOf(prisma.transaction.aggregate).mockResolvedValue({
     _count: { _all: 2 },
     _sum: { amount: new Prisma.Decimal('20.000000') },
   } as never)
-  prisma.refundRequest.aggregate.mockResolvedValue({
+  mockOf(prisma.refundRequest.aggregate).mockResolvedValue({
     _count: { _all: 1 },
     _sum: { amount: new Prisma.Decimal('0.500000') },
   } as never)
-  prisma.$queryRaw.mockResolvedValue([
+  mockOf(prisma.$queryRaw).mockResolvedValue([
     { day: '2026-08-02', requests: 10, revenue: new Prisma.Decimal('5.000000') },
   ])
 })
@@ -94,7 +98,7 @@ describe('BusinessAnalyticsService', () => {
   })
 
   it('builds a daily timeline, zero-filling missing days', async () => {
-    prisma.$queryRaw.mockResolvedValue([
+    mockOf(prisma.$queryRaw).mockResolvedValue([
       { day: '2026-08-02', requests: 6, revenue: new Prisma.Decimal('3.000000') },
     ])
     const service = new BusinessAnalyticsService()
@@ -117,7 +121,7 @@ describe('BusinessAnalyticsService', () => {
       user: 'user-1',
     })
 
-    const usageAggCalls = vi.mocked(prisma.usageLog.aggregate).mock.calls
+    const usageAggCalls = mockOf(prisma.usageLog.aggregate).mock.calls
     expect(usageAggCalls.length).toBeGreaterThan(0)
     const first = usageAggCalls[0][0]
     expect(first.where.provider).toBe('deepseek')
@@ -126,12 +130,12 @@ describe('BusinessAnalyticsService', () => {
   })
 
   it('returns zeroed metrics when there is no data', async () => {
-    prisma.usageLog.groupBy.mockResolvedValue([])
-    prisma.usageLog.aggregate.mockResolvedValue({
+    mockOf(prisma.usageLog.groupBy).mockResolvedValue([])
+    mockOf(prisma.usageLog.aggregate).mockResolvedValue({
       _count: { _all: 0 },
       _sum: { userCost: new Prisma.Decimal(0) },
     } as never)
-    prisma.$queryRaw.mockResolvedValue([])
+    mockOf(prisma.$queryRaw).mockResolvedValue([])
 
     const service = new BusinessAnalyticsService()
     const result = await service.getAnalytics(BASE_FILTERS)

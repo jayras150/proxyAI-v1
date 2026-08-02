@@ -352,6 +352,14 @@ class FakeUsageRepository implements UsageRepository, Snapshottable {
     return log
   }
 
+  async aggregatePeriod(userId: string, _from: Date, _to: Date) {
+    const logs = this.logs.filter((l) => l.userId === userId && l.status === 'COMPLETED')
+    return {
+      requests: logs.length,
+      tokens: logs.reduce((sum, l) => sum + l.totalTokens, 0),
+      cost: logs.reduce((sum, l) => sum.plus(l.userCost), new Prisma.Decimal(0)),
+    }
+  }
   async markRefunded(id: string) {
     const log = this.logs.find((l) => l.id === id)
     if (!log || log.status !== 'COMPLETED') return null

@@ -14,6 +14,10 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
+/** Loose mock accessor: vi.mock replaces the module at runtime; this cast
+ * keeps TypeScript on the vitest Mock surface instead of Prisma's types. */
+import type { Mock } from 'vitest'
+const mockOf = (target: unknown): Mock => target as unknown as Mock
 
 function usageRow(id: string, status: 'COMPLETED' | 'FAILED', createdAt: Date) {
   return {
@@ -34,7 +38,7 @@ beforeEach(() => {
 
 describe('LogsService', () => {
   it('returns error entries from FAILED usage logs', async () => {
-    prisma.usageLog.findMany.mockResolvedValue([usageRow('u1', 'FAILED', new Date('2026-08-02T10:00:00.000Z'))])
+    mockOf(prisma.usageLog.findMany).mockResolvedValue([usageRow('u1', 'FAILED', new Date('2026-08-02T10:00:00.000Z'))])
 
     const service = new LogsService()
     const page = await service.list({ type: 'error' })
@@ -49,7 +53,7 @@ describe('LogsService', () => {
   })
 
   it('returns admin actions from the audit log', async () => {
-    prisma.auditLog.findMany.mockResolvedValue([
+    mockOf(prisma.auditLog.findMany).mockResolvedValue([
       { id: 'a1', adminId: 'admin-1', action: 'model.created', resource: 'model:m1', createdAt: new Date('2026-08-02T11:00:00.000Z') },
     ])
 
@@ -60,14 +64,14 @@ describe('LogsService', () => {
   })
 
   it('merges all sources sorted newest-first when no type is given', async () => {
-    prisma.usageLog.findMany.mockResolvedValue([usageRow('u1', 'COMPLETED', new Date('2026-08-02T10:00:00.000Z'))])
-    prisma.auditLog.findMany.mockResolvedValue([
+    mockOf(prisma.usageLog.findMany).mockResolvedValue([usageRow('u1', 'COMPLETED', new Date('2026-08-02T10:00:00.000Z'))])
+    mockOf(prisma.auditLog.findMany).mockResolvedValue([
       { id: 'a1', adminId: 'admin-1', action: 'user.suspended', resource: 'user:u9', createdAt: new Date('2026-08-02T12:00:00.000Z') },
     ])
-    prisma.refundRequest.findMany.mockResolvedValue([
+    mockOf(prisma.refundRequest.findMany).mockResolvedValue([
       { id: 'r1', userId: 'user-1', status: 'COMPLETED', amount: new Prisma.Decimal('0.500000'), currency: 'USD', createdAt: new Date('2026-08-02T09:00:00.000Z') },
     ])
-    prisma.transaction.findMany.mockResolvedValue([
+    mockOf(prisma.transaction.findMany).mockResolvedValue([
       { id: 't1', userId: 'user-1', type: 'TOPUP', status: 'COMPLETED', amount: new Prisma.Decimal('10.000000'), currency: 'USD', createdAt: new Date('2026-08-02T08:00:00.000Z') },
     ])
 
@@ -81,7 +85,7 @@ describe('LogsService', () => {
   it('paginates with an opaque cursor and has_more flag', async () => {
     const rows = Array.from({ length: 21 }, (_, i) => usageRow(`u${i}`, 'COMPLETED', new Date(Date.UTC(2026, 7, 2, 10, i))))
 
-    prisma.usageLog.findMany.mockResolvedValue(rows)
+    mockOf(prisma.usageLog.findMany).mockResolvedValue(rows)
 
     const service = new LogsService()
     const page = await service.list({ type: 'request', limit: 20 })
@@ -91,7 +95,7 @@ describe('LogsService', () => {
     expect(page.next_cursor).toBeTruthy()
 
     // Cursor filters to earlier entries
-    prisma.usageLog.findMany.mockResolvedValue(rows.slice(20))
+    mockOf(prisma.usageLog.findMany).mockResolvedValue(rows.slice(20))
     const page2 = await service.list({ type: 'request', limit: 20, cursor: page.next_cursor ?? undefined })
     expect(page2.items).toHaveLength(1)
     expect(page2.has_more).toBe(false)
@@ -99,7 +103,7 @@ describe('LogsService', () => {
   })
 
   it('caps limit between 1 and 100', async () => {
-    prisma.usageLog.findMany.mockResolvedValue([])
+    mockOf(prisma.usageLog.findMany).mockResolvedValue([])
     const service = new LogsService()
 
     await service.list({ type: 'request', limit: 0 })

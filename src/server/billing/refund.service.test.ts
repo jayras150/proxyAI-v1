@@ -291,6 +291,14 @@ class FakeUsageRepository implements UsageRepository, Snapshottable {
     return log
   }
 
+  async aggregatePeriod(userId: string, _from: Date, _to: Date) {
+    const logs = this.logs.filter((l) => l.userId === userId && l.status === 'COMPLETED')
+    return {
+      requests: logs.length,
+      tokens: logs.reduce((sum, l) => sum + l.totalTokens, 0),
+      cost: logs.reduce((sum, l) => sum.plus(l.userCost), new Prisma.Decimal(0)),
+    }
+  }
   async markRefunded(id: string) {
     if (this.failMarkRefunded) throw new Error('DB failure: markRefunded failed')
     const log = this.logs.find((l) => l.id === id)
@@ -794,3 +802,111 @@ describe('RefundService — deterministic result', () => {
     expect(a.refundRequestId).not.toBe(b.refundRequestId)
   })
 })
+
+// ─── Admin approval path (M5 hardening) ─────────────────────────────────
+
+describe('RefundService — adminApprove', () => {
+  it('completes an EXISTING request atomically: credit + usage REFUNDED + request COMPLETED', async () => {
+    const refund = refundRepo.seed({ usageLogId: 'usage-1', userId: 'user-1' })
+
+    const result = await service.adminApprove({
+      refundRequestId: refund.id,
+      adminId: 'admin-1',
+      requestId: 'req-admin-1',
+    })
+
+    expect(result.replayed).toBe(false)
+    expect(result.refundRequestId).toBe(refund.id)
+    expect(result.amount).toBe(REFUND_AMOUNT)
+    expect(result.refundStatus).toBe('COMPLETED')
+    expect(result.usageStatus).toBe('REFUNDED')
+    expect(result.walletBalanceAfter).toBe('10.000496')
+
+    const wallet = await walletRepo.findByUserId('user-1')
+    expect(wallet!.balance.toString()).toBe('10.000496')
+
+    // No NEW refund request row — the existing one was completed.
+    expect(refundRepo.refunds).toHaveLength(1)
+    expect(refundRepo.refunds[0]!.status).toBe('COMPLETED')
+    expect(refundRepo.refunds[0]!.approvedBy).toBe('admin:admin-1')
+    expect(refundRepo.refunds[0]!.version).toBe(2)
+
+    expect(txRepo.transactions).toHaveLength(1)
+    expect(txRepo.transactions[0]!.type).toBe('REFUND')
+    expect(txRepo.transactions[0]!.reference).toBe(`refund_admin_${refund.id}`)
+    expect(events).toEqual([`refunded:${REFUND_AMOUNT}`, `credited:${REFUND_AMOUNT}`])
+  })
+
+  it('is idempotent: a retry replays the stored result without a second credit', async () => {
+    const refund = refundRepo.seed({ usageLogId: 'usage-1', userId: 'user-1' })
+
+    const first = await service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' })
+    const second = await service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' })
+
+    expect(second.replayed).toBe(true)
+    expect(second.transactionId).toBe(first.transactionId)
+    expect(second.walletBalanceAfter).toBe(first.walletBalanceAfter)
+    // Wallet credited exactly once.
+    const wallet = await walletRepo.findByUserId('user-1')
+    expect(wallet!.balance.toString()).toBe('10.000496')
+    expect(txRepo.transactions).toHaveLength(1)
+    // Events emitted once (only the first call).
+    expect(events).toHaveLength(2)
+  })
+
+  it('recovers a request stuck in APPROVED by the legacy two-step flow', async () => {
+    const refund = refundRepo.seed({ usageLogId: 'usage-1', userId: 'user-1', status: 'APPROVED' })
+
+    const result = await service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' })
+
+    expect(result.refundStatus).toBe('COMPLETED')
+    expect(refundRepo.refunds[0]!.status).toBe('COMPLETED')
+  })
+
+  it('rejects requests in a terminal status', async () => {
+    const refund = refundRepo.seed({ usageLogId: 'usage-1', userId: 'user-1', status: 'COMPLETED', version: 2 })
+
+    await expect(
+      service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' })
+    ).rejects.toMatchObject({ code: 'REFUND_FAILED' })
+
+    const wallet = await walletRepo.findByUserId('user-1')
+    expect(wallet!.balance.toString()).toBe('10')
+    expect(txRepo.transactions).toHaveLength(0)
+  })
+
+  it('rolls back everything when the usage cannot be marked REFUNDED', async () => {
+    const refund = refundRepo.seed({ usageLogId: 'usage-1', userId: 'user-1' })
+    usageRepo.failMarkRefunded = true
+
+    await expect(
+      service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' })
+    ).rejects.toMatchObject({ code: 'REFUND_FAILED' })
+
+    // Full rollback: no credit, request still REQUESTED, no events.
+    const wallet = await walletRepo.findByUserId('user-1')
+    expect(wallet!.balance.toString()).toBe('10')
+    expect(refundRepo.refunds[0]!.status).toBe('REQUESTED')
+    expect(txRepo.transactions).toHaveLength(0)
+    expect(events).toHaveLength(0)
+  })
+
+  it('serializes concurrent approvals — exactly one credit', async () => {
+    const refund = refundRepo.seed({ usageLogId: 'usage-1', userId: 'user-1' })
+
+    const [a, b] = await Promise.all([
+      service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' }),
+      service.adminApprove({ refundRequestId: refund.id, adminId: 'admin-1' }),
+    ])
+
+    // Either one processed and the other replayed, or one threw IN_PROGRESS.
+    const succeeded = [a, b].filter((r) => r.replayed === false)
+    const replayed = [a, b].filter((r) => r.replayed === true)
+    expect(succeeded.length + replayed.length).toBeGreaterThanOrEqual(1)
+
+    const wallet = await walletRepo.findByUserId('user-1')
+    expect(wallet!.balance.toString()).toBe('10.000496')
+    expect(txRepo.transactions.filter((t) => t.type === 'REFUND')).toHaveLength(1)
+  })
+})
+

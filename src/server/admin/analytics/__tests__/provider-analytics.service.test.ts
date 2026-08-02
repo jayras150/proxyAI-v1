@@ -16,18 +16,22 @@ vi.mock('@/lib/prisma', () => ({
 }))
 
 import { prisma } from '@/lib/prisma'
+/** Loose mock accessor: vi.mock replaces the module at runtime; this cast
+ * keeps TypeScript on the vitest Mock surface instead of Prisma's types. */
+import type { Mock } from 'vitest'
+const mockOf = (target: unknown): Mock => target as unknown as Mock
 
 beforeEach(() => {
   vi.clearAllMocks()
 
-  prisma.aiConfiguration.findMany.mockResolvedValue([
+  mockOf(prisma.aiConfiguration.findMany).mockResolvedValue([
     { key: 'provider.deepseek.enabled', value: true },
     { key: 'provider.deepseek.circuit_breaker.enabled', value: true },
     { key: 'provider.deepseek.circuit_breaker.failure_threshold', value: 5 },
     { key: 'provider.deepseek.circuit_breaker.recovery_timeout_ms', value: 30000 },
   ])
 
-  prisma.usageLog.groupBy.mockImplementation((args: { by: string[] }) => {
+  mockOf(prisma.usageLog.groupBy).mockImplementation((args: { by: string[] }) => {
     if (args.by.length === 2) {
       // provider + status
       return Promise.resolve([
@@ -41,12 +45,12 @@ beforeEach(() => {
     ])
   })
 
-  prisma.usageLog.findMany.mockResolvedValue([
+  mockOf(prisma.usageLog.findMany).mockResolvedValue([
     { provider: 'deepseek' },
     { provider: 'deepseek' },
   ])
 
-  prisma.$queryRaw.mockResolvedValue([
+  mockOf(prisma.$queryRaw).mockResolvedValue([
     { day: '2026-08-01', provider: 'deepseek', requests: 40, failed: 1 },
     { day: '2026-08-02', provider: 'deepseek', requests: 60, failed: 2 },
   ])
@@ -93,7 +97,7 @@ describe('ProviderAnalyticsService', () => {
   })
 
   it('marks provider degraded when failure rate exceeds 5%', async () => {
-    prisma.usageLog.groupBy.mockImplementation((args: { by: string[] }) => {
+    mockOf(prisma.usageLog.groupBy).mockImplementation((args: { by: string[] }) => {
       if (args.by.length === 2) {
         return Promise.resolve([
           { provider: 'deepseek', status: 'COMPLETED', _count: { _all: 90 } },
@@ -113,9 +117,9 @@ describe('ProviderAnalyticsService', () => {
   })
 
   it('marks provider no_traffic when there are no requests', async () => {
-    prisma.usageLog.groupBy.mockResolvedValue([])
-    prisma.usageLog.findMany.mockResolvedValue([])
-    prisma.$queryRaw.mockResolvedValue([])
+    mockOf(prisma.usageLog.groupBy).mockResolvedValue([])
+    mockOf(prisma.usageLog.findMany).mockResolvedValue([])
+    mockOf(prisma.$queryRaw).mockResolvedValue([])
 
     const service = new ProviderAnalyticsService()
     const result = await service.getAnalytics({ range: '7d' })
