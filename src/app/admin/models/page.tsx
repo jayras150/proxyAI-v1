@@ -159,7 +159,7 @@ export default function AdminModelsPage() {
       setCursors([...cursors, data.next_cursor])
       setCursor(data.next_cursor)
     }
-  }, [data?.next_cursor, cursors])
+  }, [data, cursors])
 
     return (
     <AdminShell>

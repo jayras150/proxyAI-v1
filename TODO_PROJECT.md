@@ -2,7 +2,7 @@
 
 Last Updated: 2026-08-02
 
-Latest commit: `main` — feat(admin-m3): AI platform management — models, pricing, providers, system config, feature flags
+Latest commit: `main` — feat(admin-m4): monitoring & analytics — system health, business/financial/usage/provider analytics, logs, export
 
 ---
 
@@ -338,7 +338,70 @@ Backend gaps (additive, perlu approval saat milestone-nya): GET /v1/dashboard/su
 
 ### Admin Dashboard
 
-Status: 🟢 **M1 Foundation COMPLETED** (2026-08-01) | 🟢 **M2 Operations COMPLETED** (2026-08-01) | 🟢 **M3 AI Platform Management COMPLETED** (2026-08-02)
+Status: 🟢 **M1 Foundation COMPLETED** (2026-08-01) | 🟢 **M2 Operations COMPLETED** (2026-08-01) | 🟢 **M3 AI Platform Management COMPLETED** (2026-08-02) | 🟢 **M4 Monitoring & Analytics COMPLETED** (2026-08-02)
+
+### Milestone 4 — Monitoring & Analytics (COMPLETED 2026-08-02)
+
+#### System Monitoring
+- [x] Component health: database, redis, providers, queue, storage, api
+- [x] Environment status, uptime, version, build info (node/platform/arch)
+- [x] Response time, requests/sec, success rate, error rate
+- [x] Auto refresh (30s) with pause-when-tab-hidden
+
+#### Provider Analytics
+- [x] Provider list with latency, success/failure rate
+- [x] Request count, token usage, estimated cost, current status
+- [x] Circuit breaker config status
+- [x] Health timeline (daily success rate)
+- [x] Timeout/retry counts reported as unknown (V1 gateway does not persist failure reasons)
+
+#### Business Analytics
+- [x] Revenue today/yesterday/month/growth
+- [x] Active / new / returning users, ARPU
+- [x] API requests (total/success/error/rate)
+- [x] Wallet topups & refunds, top users
+- [x] Daily revenue timeline
+
+#### Financial Analytics
+- [x] Wallet float, negative balance users, outstanding balance
+- [x] Charges, refunds, topups
+- [x] Provider cost, markup revenue, net revenue, profit estimate
+
+#### AI Usage Analytics
+- [x] Requests, prompt/completion/cached/total tokens
+- [x] Requests by model & provider, top models
+- [x] Average latency, average cost
+- [x] Daily token timeline
+
+#### Logs Viewer
+- [x] Recent errors, requests, admin actions, refunds, wallet actions (read-only)
+- [x] Type filter + cursor pagination
+
+#### Charts & Filters & Export
+- [x] Line / Bar / Pie / Area charts (recharts, lazy-loaded, reduced-motion aware, sr-only text summaries)
+- [x] Filters: today / yesterday / 7d / 30d / custom range + provider / model / user
+- [x] Export CSV + JSON (raw file download, Content-Disposition)
+
+#### APIs Built (7 new endpoint paths)
+- [x] GET /api/admin/monitoring
+- [x] GET /api/admin/analytics (business)
+- [x] GET /api/admin/analytics/usage
+- [x] GET /api/admin/analytics/financial
+- [x] GET /api/admin/providers/analytics
+- [x] GET /api/admin/logs
+- [x] GET /api/admin/export
+
+#### Verification
+- [x] TanStack Query: admin-monitoring, admin-analytics, admin-provider-analytics, admin-financial, admin-system-health keys
+- [x] OpenAPI updated (7 endpoints + 6 schemas + 6 shared query parameters)
+- [x] Skeleton / refreshing / background refresh / auto-refresh
+- [x] Empty states (analytics, charts, logs) · Error states (401/403/429/500/offline/retry via ErrorState)
+- [x] Responsive (grid collapse, tables, mobile)
+- [x] Accessibility: keyboard, ARIA, chart text summaries, reduced motion
+- [x] Security: analytics/export gated admin:analytics:read, logs gated admin:audit:read, no secrets in responses, financial aggregates only
+- [x] 76 new tests (49 service + 27 component/page) — total 549
+- [x] npm test ✅ · tsc ✅ · lint ✅ 0 errors · build ✅ · OpenAPI ✅
+- [x] Fixed pre-existing lint errors in M2/M3 pages (react-compiler patterns)
 
 ### Milestone 3 — AI Platform Management (COMPLETED 2026-08-02)
 

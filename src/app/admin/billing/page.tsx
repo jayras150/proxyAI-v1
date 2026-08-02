@@ -3,7 +3,7 @@
 // ProxyAI — Admin Billing Page (Milestone 3)
 // Billing overview: pricing summary, cost calculator preview.
 
-import { useState, useCallback } from 'react'
+import { useState } from 'react'
 import { AdminShell } from '@/components/admin/admin-shell'
 import { useAdminModels } from '@/hooks/use-admin-models'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -23,13 +23,13 @@ export default function AdminBillingPage() {
   const selectedModel = models.find((m) => m.id === calcModel)
   const pricing = selectedModel?.pricing_version
 
-  const calculateCost = useCallback(() => {
+  const calculateCost = () => {
     if (!pricing) return null
     const input = parseFloat(pricing.input_price) * parseInt(promptTokens || '0') / 1_000_000
     const output = parseFloat(pricing.output_price) * parseInt(completionTokens || '0') / 1_000_000
     const total = input + output
     return { input, output, total, currency: pricing.currency }
-  }, [pricing, promptTokens, completionTokens])
+  }
 
   const cost = calculateCost()
 

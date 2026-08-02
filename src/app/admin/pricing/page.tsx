@@ -73,7 +73,7 @@ export default function AdminPricingPage() {
       setCursors([...cursors, data.next_cursor])
       setCursor(data.next_cursor)
     }
-  }, [data?.next_cursor, cursors])
+  }, [data, cursors])
 
   const handleCreate = useCallback(async () => {
     await createMutation.mutateAsync({

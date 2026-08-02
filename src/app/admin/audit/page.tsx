@@ -30,7 +30,7 @@ export default function AdminAuditPage() {
   const items = data?.items ?? []
 
   const handlePrev = useCallback(() => { const prev = cursors.length >= 2 ? cursors[cursors.length - 2]! : null; setCursors(cursors.slice(0, -1)); setCursor(prev) }, [cursors])
-  const handleNext = useCallback(() => { if (data?.next_cursor) { setCursors([...cursors, data.next_cursor]); setCursor(data.next_cursor) } }, [data?.next_cursor, cursors])
+  const handleNext = useCallback(() => { if (data?.next_cursor) { setCursors([...cursors, data.next_cursor]); setCursor(data.next_cursor) } }, [data, cursors])
   const handleFilter = useCallback(() => { setCursor(null); setCursors([]) }, [])
 
   return (

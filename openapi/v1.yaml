@@ -1099,6 +1099,400 @@ components:
               type: boolean
         request_id:
           type: string
+  # ─── Milestone 4 — Monitoring & Analytics schemas ─────────────────────
+  ComponentStatus:
+    type: object
+    required: [name, status, detail]
+    properties:
+      name:
+        type: string
+      status:
+        type: string
+        enum: [ok, degraded, down, not_configured]
+      latency_ms:
+        type: [integer, 'null']
+      detail:
+        type: string
+  SystemMonitoring:
+    type: object
+    required: [status, uptime_seconds, environment, version, components]
+    properties:
+      status:
+        type: string
+        enum: [ok, degraded, down]
+      uptime_seconds:
+        type: integer
+      environment:
+        type: string
+      version:
+        type: string
+      build_info:
+        type: object
+        properties:
+          node:
+            type: string
+          platform:
+            type: string
+          arch:
+            type: string
+      components:
+        type: array
+        items:
+          $ref: '#/components/schemas/ComponentStatus'
+      requests_per_sec:
+        type: number
+      avg_response_time_ms:
+        type: [integer, 'null']
+      success_rate:
+        type: string
+      error_rate:
+        type: string
+      checked_at:
+        type: string
+        format: date-time
+  BusinessAnalytics:
+    type: object
+    properties:
+      range:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+          label:
+            type: string
+      revenue:
+        type: object
+        properties:
+          today:
+            $ref: '#/components/schemas/Money'
+          yesterday:
+            $ref: '#/components/schemas/Money'
+          month:
+            $ref: '#/components/schemas/Money'
+          growth_percent:
+            type: string
+      users:
+        type: object
+        properties:
+          active:
+            type: integer
+          new:
+            type: integer
+          returning:
+            type: integer
+      api_requests:
+        type: object
+        properties:
+          total:
+            type: integer
+          success:
+            type: integer
+          error:
+            type: integer
+          success_rate:
+            type: string
+      wallet:
+        type: object
+        properties:
+          topups_count:
+            type: integer
+          topups_amount:
+            $ref: '#/components/schemas/Money'
+          refunds_count:
+            type: integer
+          refunds_amount:
+            $ref: '#/components/schemas/Money'
+      arpu:
+        $ref: '#/components/schemas/Money'
+      top_users:
+        type: array
+        items:
+          type: object
+          properties:
+            user_id:
+              type: string
+            email:
+              type: string
+            requests:
+              type: integer
+            spend:
+              $ref: '#/components/schemas/Money'
+      timeline:
+        type: array
+        items:
+          type: object
+          properties:
+            date:
+              type: string
+            requests:
+              type: integer
+            revenue:
+              $ref: '#/components/schemas/Money'
+  UsageAnalytics:
+    type: object
+    properties:
+      range:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+          label:
+            type: string
+      totals:
+        type: object
+        properties:
+          requests:
+            type: integer
+          prompt_tokens:
+            type: integer
+          completion_tokens:
+            type: integer
+          cached_tokens:
+            type: integer
+          total_tokens:
+            type: integer
+          provider_cost:
+            $ref: '#/components/schemas/Money'
+          user_cost:
+            $ref: '#/components/schemas/Money'
+          avg_latency_ms:
+            type: [integer, 'null']
+          avg_cost:
+            $ref: '#/components/schemas/Money'
+      by_model:
+        type: array
+        items:
+          type: object
+          properties:
+            model:
+              type: string
+            requests:
+              type: integer
+            tokens:
+              type: integer
+            cost:
+              $ref: '#/components/schemas/Money'
+            avg_latency_ms:
+              type: [integer, 'null']
+      by_provider:
+        type: array
+        items:
+          type: object
+          properties:
+            provider:
+              type: string
+            requests:
+              type: integer
+            tokens:
+              type: integer
+            cost:
+              $ref: '#/components/schemas/Money'
+            success_rate:
+              type: string
+      timeline:
+        type: array
+        items:
+          type: object
+          properties:
+            date:
+              type: string
+            requests:
+              type: integer
+            tokens:
+              type: integer
+            cost:
+              $ref: '#/components/schemas/Money'
+  FinancialAnalytics:
+    type: object
+    properties:
+      range:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+          label:
+            type: string
+      wallet_float:
+        $ref: '#/components/schemas/Money'
+      negative_balance_users:
+        type: integer
+      outstanding_balance:
+        $ref: '#/components/schemas/Money'
+      charges:
+        type: object
+        properties:
+          count:
+            type: integer
+          amount:
+            $ref: '#/components/schemas/Money'
+      refunds:
+        type: object
+        properties:
+          count:
+            type: integer
+          amount:
+            $ref: '#/components/schemas/Money'
+      topups:
+        type: object
+        properties:
+          count:
+            type: integer
+          amount:
+            $ref: '#/components/schemas/Money'
+      provider_cost:
+        $ref: '#/components/schemas/Money'
+      markup_revenue:
+        $ref: '#/components/schemas/Money'
+      net_revenue:
+        $ref: '#/components/schemas/Money'
+      profit_estimate:
+        $ref: '#/components/schemas/Money'
+  ProviderAnalytics:
+    type: object
+    properties:
+      range:
+        type: object
+        properties:
+          from:
+            type: string
+          to:
+            type: string
+          label:
+            type: string
+      providers:
+        type: array
+        items:
+          type: object
+          properties:
+            name:
+              type: string
+            display_name:
+              type: string
+            enabled:
+              type: boolean
+            requests:
+              type: integer
+            success_count:
+              type: integer
+            failure_count:
+              type: integer
+            success_rate:
+              type: string
+            timeout_count:
+              type: [integer, 'null']
+            retry_count:
+              type: [integer, 'null']
+            avg_latency_ms:
+              type: [integer, 'null']
+            tokens:
+              type: integer
+            estimated_cost:
+              $ref: '#/components/schemas/Money'
+            circuit_breaker:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                failure_threshold:
+                  type: integer
+                recovery_timeout_ms:
+                  type: integer
+                status:
+                  type: string
+                  enum: [closed, open, half_open, unknown]
+            current_status:
+              type: string
+              enum: [operational, degraded, down, no_traffic]
+            health_timeline:
+              type: array
+              items:
+                type: object
+                properties:
+                  date:
+                    type: string
+                  requests:
+                    type: integer
+                  success_rate:
+                    type: string
+  LogsPage:
+    type: object
+    properties:
+      items:
+        type: array
+        items:
+          type: object
+          properties:
+            id:
+              type: string
+            type:
+              type: string
+              enum: [error, request, admin_action, refund, wallet]
+            title:
+              type: string
+            detail:
+              type: [string, 'null']
+            user_id:
+              type: [string, 'null']
+            admin_id:
+              type: [string, 'null']
+            created_at:
+              type: string
+              format: date-time
+      next_cursor:
+        type: [string, 'null']
+      has_more:
+        type: boolean
+  parameters:
+    AnalyticsRange:
+      name: range
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [today, yesterday, 7d, 30d, custom]
+        default: today
+      description: Analytics period.
+    AnalyticsFrom:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Custom range start (ISO date/datetime). Used when range=custom.
+    AnalyticsTo:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Custom range end (ISO date/datetime). Used when range=custom.
+    AnalyticsProvider:
+      name: provider
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filter by provider name.
+    AnalyticsModel:
+      name: model
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filter by model identifier.
+    AnalyticsUser:
+      name: user
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Filter by user id.
   responses:
     Unauthorized:
       description: Missing or invalid authentication
@@ -1826,6 +2220,218 @@ components:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  # ─── Milestone 4 — Monitoring & Analytics ────────────────────────────
+
+  /admin/monitoring:
+    get:
+      operationId: adminMonitoring
+      summary: System monitoring (component health, uptime, rates)
+      tags: [Admin, Monitoring]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: System monitoring snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SystemMonitoring'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /admin/analytics:
+    get:
+      operationId: adminBusinessAnalytics
+      summary: Business analytics (revenue, users, requests, top users)
+      tags: [Admin, Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyticsRange'
+        - $ref: '#/components/parameters/AnalyticsFrom'
+        - $ref: '#/components/parameters/AnalyticsTo'
+        - $ref: '#/components/parameters/AnalyticsProvider'
+        - $ref: '#/components/parameters/AnalyticsModel'
+        - $ref: '#/components/parameters/AnalyticsUser'
+      responses:
+        '200':
+          description: Business analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BusinessAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/analytics/usage:
+    get:
+      operationId: adminUsageAnalytics
+      summary: AI usage analytics (tokens, latency, by model & provider)
+      tags: [Admin, Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyticsRange'
+        - $ref: '#/components/parameters/AnalyticsFrom'
+        - $ref: '#/components/parameters/AnalyticsTo'
+        - $ref: '#/components/parameters/AnalyticsProvider'
+        - $ref: '#/components/parameters/AnalyticsModel'
+        - $ref: '#/components/parameters/AnalyticsUser'
+      responses:
+        '200':
+          description: Usage analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsageAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/analytics/financial:
+    get:
+      operationId: adminFinancialAnalytics
+      summary: Financial analytics (wallet float, charges, refunds, profit)
+      tags: [Admin, Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyticsRange'
+        - $ref: '#/components/parameters/AnalyticsFrom'
+        - $ref: '#/components/parameters/AnalyticsTo'
+        - $ref: '#/components/parameters/AnalyticsProvider'
+        - $ref: '#/components/parameters/AnalyticsModel'
+        - $ref: '#/components/parameters/AnalyticsUser'
+      responses:
+        '200':
+          description: Financial analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FinancialAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/providers/analytics:
+    get:
+      operationId: adminProviderAnalytics
+      summary: Provider analytics (latency, success rate, tokens, cost)
+      tags: [Admin, Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnalyticsRange'
+        - $ref: '#/components/parameters/AnalyticsFrom'
+        - $ref: '#/components/parameters/AnalyticsTo'
+        - $ref: '#/components/parameters/AnalyticsModel'
+        - $ref: '#/components/parameters/AnalyticsUser'
+      responses:
+        '200':
+          description: Provider analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProviderAnalytics'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/logs:
+    get:
+      operationId: adminLogs
+      summary: Unified log stream (errors, requests, admin actions, refunds, wallet)
+      tags: [Admin, Monitoring]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [error, request, admin_action, refund, wallet]
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+      responses:
+        '200':
+          description: Log page
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogsPage'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/export:
+    get:
+      operationId: adminExport
+      summary: Export analytics as CSV or JSON (raw file download)
+      tags: [Admin, Analytics]
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [business, usage, financial, provider, logs]
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [csv, json]
+            default: csv
+        - $ref: '#/components/parameters/AnalyticsRange'
+        - $ref: '#/components/parameters/AnalyticsFrom'
+        - $ref: '#/components/parameters/AnalyticsTo'
+        - $ref: '#/components/parameters/AnalyticsProvider'
+        - $ref: '#/components/parameters/AnalyticsModel'
+        - $ref: '#/components/parameters/AnalyticsUser'
+      responses:
+        '200':
+          description: File download (Content-Disposition attachment)
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
 tags:
   - name: Wallet
   - name: Topup
@@ -1833,3 +2439,5 @@ tags:
   - name: AI Gateway
   - name: Billing
   - name: Admin
+  - name: Analytics
+  - name: Monitoring

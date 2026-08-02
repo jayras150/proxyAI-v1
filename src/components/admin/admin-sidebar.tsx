@@ -18,14 +18,16 @@ interface AdminNavItem {
 
 const NAV_ITEMS: AdminNavItem[] = [
   { href: '/admin', label: 'Dashboard', icon: '◈', permission: 'admin:access' },
+  { href: '/admin/monitoring', label: 'Monitoring', icon: '🖥️', permission: 'admin:dashboard:read' },
   { href: '/admin/users', label: 'Users', icon: '👤', permission: 'admin:users:read' },
   { href: '/admin/wallet', label: 'Wallet', icon: '💰', permission: 'admin:wallet:read' },
   { href: '/admin/refunds', label: 'Refunds', icon: '↩', permission: 'admin:refund:read' },
   { href: '/admin/billing', label: 'Billing', icon: '📊', permission: 'admin:billing:read' },
   { href: '/admin/providers', label: 'Providers', icon: '🔌', permission: 'admin:providers:read' },
   { href: '/admin/pricing', label: 'Pricing', icon: '🏷️', permission: 'admin:pricing:read' },
-  { href: '/admin/audit', label: 'Audit', icon: '📋', permission: 'admin:audit:read' },
   { href: '/admin/analytics', label: 'Analytics', icon: '📈', permission: 'admin:analytics:read' },
+  { href: '/admin/logs', label: 'Logs', icon: '📄', permission: 'admin:audit:read' },
+  { href: '/admin/audit', label: 'Audit', icon: '📋', permission: 'admin:audit:read' },
   { href: '/admin/admins', label: 'Admins', icon: '🔐', permission: 'admin:admins:read' },
   { href: '/admin/settings', label: 'Settings', icon: '⚙️', permission: 'admin:settings:read' },
 ]

@@ -14,6 +14,9 @@ export const STALE_TIMES = {
   lists: 30_000,
   models: 5 * 60_000,
   health: 60_000,
+  monitoring: 30_000,
+  analytics: 60_000,
+  logs: 30_000,
 } as const
 
 export const QUERY_KEYS = {
@@ -27,6 +30,13 @@ export const QUERY_KEYS = {
   providers: ['providers'] as const,
   health: ['health'] as const,
   me: ['me'] as const,
+  adminMonitoring: ['admin', 'monitoring'] as const,
+  adminSystemHealth: ['admin', 'system-health'] as const,
+  adminAnalytics: ['admin', 'analytics'] as const,
+  adminUsageAnalytics: ['admin', 'usage-analytics'] as const,
+  adminFinancial: ['admin', 'financial'] as const,
+  adminProviderAnalytics: ['admin', 'provider-analytics'] as const,
+  adminLogs: ['admin', 'logs'] as const,
 } as const
 
 export function makeQueryClient(): QueryClient {

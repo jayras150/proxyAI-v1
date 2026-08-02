@@ -27,19 +27,19 @@ export default function TopupPage() {
 
   const [formError, setFormError] = useState<string | null>(null)
 
-  // Poll the latest created topup when it's pending
+  // Poll the latest created topup when it's pending (hook stops polling at terminal)
   const pollId = createdTopup?.id ?? null
   const { data: pollData } = useTopupPoll(pollId)
+  const isTerminal = !!pollData && (pollData.status === 'PAID' || pollData.status === 'FAILED' || pollData.status === 'EXPIRED')
 
-  // When polling detects terminal status, invalidate
+  // When polling detects terminal status, invalidate (no setState in effect)
   useEffect(() => {
-    if (pollData && (pollData.status === 'PAID' || pollData.status === 'FAILED' || pollData.status === 'EXPIRED')) {
+    if (isTerminal) {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.wallet })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.dashboardSummary })
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.transactions })
-      setCreatedTopup(null)
     }
-  }, [pollData, queryClient])
+  }, [isTerminal, queryClient])
 
   const handleCreateTopup = useCallback(async (amount: string) => {
     setFormError(null)
@@ -90,11 +90,11 @@ export default function TopupPage() {
         onCreateTopup={handleCreateTopup}
         isCreating={createTopup.isPending}
         error={formError}
-        createdTopup={createdTopup}
+        createdTopup={isTerminal ? null : createdTopup}
       />
 
       {/* Polling status indicator */}
-      {createdTopup && (
+      {!isTerminal && createdTopup && (
         <Alert tone="info" title="Waiting for Payment">
           <p>Your payment is being processed. This page will update automatically when confirmed.</p>
           {pollData && (

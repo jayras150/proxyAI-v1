@@ -38,7 +38,7 @@ export default function AdminUsersPage() {
       setCursors([...cursors, data.next_cursor])
       setCursor(data.next_cursor)
     }
-  }, [data?.next_cursor, cursors])
+  }, [data, cursors])
 
   const handleFilter = useCallback(() => {
     setCursor(null)
